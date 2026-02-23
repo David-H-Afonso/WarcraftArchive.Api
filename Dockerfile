@@ -3,8 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY WarcraftArchive.Api.csproj .
 RUN dotnet restore WarcraftArchive.Api.csproj
+
 COPY . .
-RUN dotnet publish WarcraftArchive.Api.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish WarcraftArchive.Api.csproj -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
