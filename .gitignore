@@ -9,8 +9,8 @@ publish/
 *.db-shm
 *.db-wal
 
-# CSV data (mount at runtime)
-data/
+# Runtime data directory (NOT the Data/ source folder)
+/data/
 
 # IDE
 .vs/
