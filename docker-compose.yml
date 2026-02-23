@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  warcraftarchive-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: warcraftarchive-api:latest
+    container_name: warcraftarchive-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8083}:8080"
+    volumes:
+      - warcraftarchive-data:/data
+      # Mount your Notion CSV exports here for demo import:
+      # - ./data/csv:/data/csv:ro
+    env_file:
+      - .env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DATABASE_PATH=/data/warcraftarchive.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  warcraftarchive-data:
+    driver: local

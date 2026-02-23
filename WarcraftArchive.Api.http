@@ -1,0 +1,94 @@
+@baseUrl = http://localhost:5020
+
+### Health
+GET {{baseUrl}}/health
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@local",
+  "password": "Admin123!"
+}
+
+### Refresh
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "YOUR_REFRESH_TOKEN"
+}
+
+### Me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "YOUR_REFRESH_TOKEN"
+}
+
+### List Characters
+GET {{baseUrl}}/characters
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### Create Character
+POST {{baseUrl}}/characters
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "name": "Azariel",
+  "level": 80,
+  "class": "Priest",
+  "covenant": "Kyrian",
+  "warband": "My Warband",
+  "ownerUserId": null
+}
+
+### List Contents
+GET {{baseUrl}}/contents
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### List Contents by search
+GET {{baseUrl}}/contents?search=Sepulcher
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### Create Content
+POST {{baseUrl}}/contents
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "name": "Sepulcher of the First Ones",
+  "expansion": "Shadowlands",
+  "comment": "Última raid de Shadowlands",
+  "allowedDifficulties": 14,
+  "motives": 3
+}
+
+### List Trackings (weekly)
+GET {{baseUrl}}/trackings?frequency=2
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### Create Tracking
+POST {{baseUrl}}/trackings
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "characterId": "CHARACTER_GUID",
+  "contentId": "CONTENT_GUID",
+  "difficulty": 2,
+  "frequency": 2,
+  "status": 1,
+  "comment": "Farming Mythic mount"
+}
+
+### Weekly Dashboard
+GET {{baseUrl}}/dashboard/weekly
+Authorization: Bearer YOUR_ACCESS_TOKEN

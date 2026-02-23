@@ -1,0 +1,10 @@
+bin
+obj
+*.user
+.vs
+.vscode
+publish
+*.db
+*.db-shm
+*.db-wal
+data/csv

@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+publish/
+
+# Sensitive / runtime files
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# CSV data (mount at runtime)
+data/
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# Logs
+*.log
