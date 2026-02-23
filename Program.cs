@@ -26,18 +26,18 @@ if (File.Exists(envFilePath))
 }
 
 // ── Environment variable overrides (12-factor) ────────────────────────────────
-ApplyEnvOverride(builder.Configuration, "DatabaseSettings:DatabasePath",     "DATABASE_PATH");
-ApplyEnvOverride(builder.Configuration, "JwtSettings:SecretKey",             "JWT_SECRET_KEY");
-ApplyEnvOverride(builder.Configuration, "JwtSettings:Issuer",                "JWT_ISSUER");
-ApplyEnvOverride(builder.Configuration, "JwtSettings:Audience",              "JWT_AUDIENCE");
+ApplyEnvOverride(builder.Configuration, "DatabaseSettings:DatabasePath", "DATABASE_PATH");
+ApplyEnvOverride(builder.Configuration, "JwtSettings:SecretKey", "JWT_SECRET_KEY");
+ApplyEnvOverride(builder.Configuration, "JwtSettings:Issuer", "JWT_ISSUER");
+ApplyEnvOverride(builder.Configuration, "JwtSettings:Audience", "JWT_AUDIENCE");
 ApplyEnvOverrideInt(builder.Configuration, "JwtSettings:AccessTokenMinutes", "JWT_ACCESS_TOKEN_MINUTES");
-ApplyEnvOverrideInt(builder.Configuration, "JwtSettings:RefreshTokenDays",   "JWT_REFRESH_TOKEN_DAYS");
-ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminEmail",           "SEED_ADMIN_EMAIL");
-ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminUsername",        "SEED_ADMIN_USERNAME");
-ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminPassword",        "SEED_ADMIN_PASSWORD");
-ApplyEnvOverrideBool(builder.Configuration, "SeedSettings:AdminEnabled",     "SEED_ADMIN_ENABLED");
-ApplyEnvOverrideBool(builder.Configuration, "SeedSettings:DemoImportEnabled","DEMO_IMPORT_ENABLED");
-ApplyEnvOverride(builder.Configuration, "SeedSettings:CsvDataPath",          "CSV_DATA_PATH");
+ApplyEnvOverrideInt(builder.Configuration, "JwtSettings:RefreshTokenDays", "JWT_REFRESH_TOKEN_DAYS");
+ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminEmail", "SEED_ADMIN_EMAIL");
+ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminUsername", "SEED_ADMIN_USERNAME");
+ApplyEnvOverride(builder.Configuration, "SeedSettings:AdminPassword", "SEED_ADMIN_PASSWORD");
+ApplyEnvOverrideBool(builder.Configuration, "SeedSettings:AdminEnabled", "SEED_ADMIN_ENABLED");
+ApplyEnvOverrideBool(builder.Configuration, "SeedSettings:DemoImportEnabled", "DEMO_IMPORT_ENABLED");
+ApplyEnvOverride(builder.Configuration, "SeedSettings:CsvDataPath", "CSV_DATA_PATH");
 
 var corsOriginEnv =
     Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ??
@@ -82,14 +82,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSettings.Issuer,
-            ValidAudience            = jwtSettings.Audience,
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew                = TimeSpan.FromSeconds(30),
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+            ClockSkew = TimeSpan.FromSeconds(30),
         };
         options.Events = new JwtBearerEvents
         {
@@ -138,10 +138,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Description = "JWT Bearer. Formato: Bearer {token}",
-        Name        = "Authorization",
-        In          = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type        = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme      = "bearer",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
     });
     c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -173,7 +173,7 @@ var app = builder.Build();
 // ── Migrate & Seed ────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
-    var db      = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var appLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     db.Database.Migrate();
@@ -250,11 +250,11 @@ static async Task<User?> SeedAdminAsync(AppDbContext db, SeedSettings settings, 
     var passwordHash = BCrypt.Net.BCrypt.HashPassword(settings.AdminPassword, workFactor: 12);
     var admin = new User
     {
-        Email        = settings.AdminEmail,
-        UserName     = settings.AdminUsername,
+        Email = settings.AdminEmail,
+        UserName = settings.AdminUsername,
         PasswordHash = passwordHash,
-        IsAdmin      = true,
-        IsActive     = true,
+        IsAdmin = true,
+        IsActive = true,
     };
     db.Users.Add(admin);
     await db.SaveChangesAsync();

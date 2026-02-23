@@ -162,10 +162,10 @@ public class TrackingService : ITrackingService
 
     internal static DifficultyFlags DifficultyToFlag(Difficulty d) => d switch
     {
-        Difficulty.LFR    => DifficultyFlags.LFR,
+        Difficulty.LFR => DifficultyFlags.LFR,
         Difficulty.Normal => DifficultyFlags.Normal,
         Difficulty.Heroic => DifficultyFlags.Heroic,
         Difficulty.Mythic => DifficultyFlags.Mythic,
-        _                 => DifficultyFlags.None,
+        _ => DifficultyFlags.None,
     };
 }

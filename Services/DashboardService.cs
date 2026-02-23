@@ -27,12 +27,12 @@ public class DashboardService : IDashboardService
             .ToListAsync();
 
         return new WeeklyDashboardDto(
-            Total:      items.Count,
+            Total: items.Count,
             NotStarted: items.Count(t => t.Status == TrackingStatus.NotStarted),
-            Pending:    items.Count(t => t.Status == TrackingStatus.Pending),
+            Pending: items.Count(t => t.Status == TrackingStatus.Pending),
             InProgress: items.Count(t => t.Status == TrackingStatus.InProgress),
-            LastWeek:   items.Count(t => t.Status == TrackingStatus.LastWeek),
-            Finished:   items.Count(t => t.Status == TrackingStatus.Finished),
-            Items:      items.Select(TrackingService.ToDto).ToList());
+            LastWeek: items.Count(t => t.Status == TrackingStatus.LastWeek),
+            Finished: items.Count(t => t.Status == TrackingStatus.Finished),
+            Items: items.Select(TrackingService.ToDto).ToList());
     }
 }

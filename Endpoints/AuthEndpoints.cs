@@ -13,7 +13,7 @@ public static class AuthEndpoints
 
         anon.MapPost("/login", async (LoginRequest request, IAuthService authService, HttpContext ctx) =>
         {
-            var userAgent  = ctx.Request.Headers.UserAgent.ToString();
+            var userAgent = ctx.Request.Headers.UserAgent.ToString();
             var deviceName = ctx.Request.Headers["X-Device-Name"].ToString();
             var result = await authService.LoginAsync(request.Email, request.Password, userAgent, deviceName);
             return result == null ? Results.Unauthorized() : Results.Ok(result);
@@ -38,7 +38,7 @@ public static class AuthEndpoints
         {
             var userId = ctx.GetUserId();
             if (userId == null) return Results.Unauthorized();
-            var email    = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+            var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
             var userName = ctx.User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
             return Results.Ok(new MeResponse(userId.Value, email, userName, ctx.IsAdmin()));
         }).WithName("Me").WithSummary("Get current authenticated user info (reads from token — no DB roundtrip)");

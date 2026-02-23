@@ -25,7 +25,7 @@ public static class CsvImportHelper
 
         logger.LogInformation("CsvImport: scanning '{Path}' for CSV files…", csvDataPath);
 
-        var charFile    = FindFile(csvDataPath, "Personajes");
+        var charFile = FindFile(csvDataPath, "Personajes");
         var contentFile = FindFile(csvDataPath, "Raids") ?? FindFile(csvDataPath, "dungeons") ?? FindFile(csvDataPath, "instances");
         var progressFile = FindFile(csvDataPath, "Content Progress") ?? FindFile(csvDataPath, "Progress");
 
@@ -123,11 +123,11 @@ public static class CsvImportHelper
         logger.LogInformation("CsvImport: importing trackings from '{File}'", filePath);
         var rows = ParseCsv(filePath);
         var imported = 0;
-        var skipped  = 0;
+        var skipped = 0;
 
         foreach (var row in rows)
         {
-            var charName    = ExtractName(GetColumn(row, "Character", "Personaje", "Char", "Name"));
+            var charName = ExtractName(GetColumn(row, "Character", "Personaje", "Char", "Name"));
             var contentName = ExtractName(GetColumn(row, "Content", "Contenido", "Instance", "Raid"));
 
             if (string.IsNullOrWhiteSpace(charName) || string.IsNullOrWhiteSpace(contentName))
@@ -152,20 +152,20 @@ public static class CsvImportHelper
                 continue;
             }
 
-            var diffStr      = GetColumn(row, "Difficulty", "Dificultad");
-            var freqStr      = GetColumn(row, "Frequency", "Frecuencia");
-            var statusStr    = GetColumn(row, "Status", "Estado");
-            var comment      = NullIfEmpty(GetColumn(row, "Comment", "Comentario", "Notes", "Notas"));
+            var diffStr = GetColumn(row, "Difficulty", "Dificultad");
+            var freqStr = GetColumn(row, "Frequency", "Frecuencia");
+            var statusStr = GetColumn(row, "Status", "Estado");
+            var comment = NullIfEmpty(GetColumn(row, "Comment", "Comentario", "Notes", "Notas"));
 
             var difficulty = ParseDifficulty(diffStr);
-            var frequency  = ParseFrequency(freqStr);
-            var status     = ParseTrackingStatus(statusStr);
+            var frequency = ParseFrequency(freqStr);
+            var status = ParseTrackingStatus(statusStr);
 
             // Idempotency check
             var exists = await db.Trackings.AnyAsync(t =>
                 t.CharacterId == character.Id &&
-                t.ContentId   == content.Id  &&
-                t.Difficulty  == difficulty);
+                t.ContentId == content.Id &&
+                t.Difficulty == difficulty);
             if (exists)
             {
                 skipped++;
@@ -175,11 +175,11 @@ public static class CsvImportHelper
             db.Trackings.Add(new Tracking
             {
                 CharacterId = character.Id,
-                ContentId   = content.Id,
-                Difficulty  = difficulty,
-                Frequency   = frequency,
-                Status      = status,
-                Comment     = comment,
+                ContentId = content.Id,
+                Difficulty = difficulty,
+                Frequency = frequency,
+                Status = status,
+                Comment = comment,
             });
             imported++;
         }
@@ -193,9 +193,9 @@ public static class CsvImportHelper
     /// <summary>Minimal RFC-4180-compatible CSV parser. Returns rows as dictionaries keyed by header name.</summary>
     internal static List<Dictionary<string, string>> ParseCsv(string filePath)
     {
-        var text    = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-        var lines   = SplitCsvLines(text);
-        var result  = new List<Dictionary<string, string>>();
+        var text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+        var lines = SplitCsvLines(text);
+        var result = new List<Dictionary<string, string>>();
         if (lines.Count == 0) return result;
 
         var headers = SplitCsvRow(lines[0]);
@@ -213,8 +213,8 @@ public static class CsvImportHelper
 
     private static List<string> SplitCsvLines(string text)
     {
-        var lines   = new List<string>();
-        var sb      = new System.Text.StringBuilder();
+        var lines = new List<string>();
+        var sb = new System.Text.StringBuilder();
         var inQuote = false;
         for (var i = 0; i < text.Length; i++)
         {
@@ -234,10 +234,10 @@ public static class CsvImportHelper
 
     private static List<string> SplitCsvRow(string line)
     {
-        var fields  = new List<string>();
-        var sb      = new System.Text.StringBuilder();
+        var fields = new List<string>();
+        var sb = new System.Text.StringBuilder();
         var inQuote = false;
-        var i       = 0;
+        var i = 0;
         while (i < line.Length)
         {
             var ch = line[i];
@@ -293,9 +293,9 @@ public static class CsvImportHelper
 
             result |= s switch
             {
-                "lfr" or "buscador de raid" or "buscador"              => DifficultyFlags.LFR,
-                "normal"                                               => DifficultyFlags.Normal,
-                "heroic" or "heroico" or "heroico" or "heroïc"        => DifficultyFlags.Heroic,
+                "lfr" or "buscador de raid" or "buscador" => DifficultyFlags.LFR,
+                "normal" => DifficultyFlags.Normal,
+                "heroic" or "heroico" or "heroico" or "heroïc" => DifficultyFlags.Heroic,
                 "mythic" or "mitico" or "mitico" or "mileg" or "elite" => DifficultyFlags.Mythic,
                 _ => DifficultyFlags.None,
             };
@@ -311,10 +311,10 @@ public static class CsvImportHelper
         var s = Normalize(raw);
         return s switch
         {
-            "lfr" or "buscador"    => Difficulty.LFR,
-            "normal"               => Difficulty.Normal,
-            "heroic" or "heroico"  => Difficulty.Heroic,
-            "mythic" or "mitico"   => Difficulty.Mythic,
+            "lfr" or "buscador" => Difficulty.LFR,
+            "normal" => Difficulty.Normal,
+            "heroic" or "heroico" => Difficulty.Heroic,
+            "mythic" or "mitico" => Difficulty.Mythic,
             _ => Difficulty.Normal,
         };
     }
@@ -326,10 +326,10 @@ public static class CsvImportHelper
         if (string.IsNullOrWhiteSpace(raw)) return Frequency.Weekly;
         return Normalize(raw) switch
         {
-            "hourly" or "hora" or "por hora"               => Frequency.Hourly,
-            "daily" or "diario" or "diaria"                => Frequency.Daily,
-            "weekly" or "semanal"                          => Frequency.Weekly,
-            "monthly" or "mensual"                         => Frequency.Monthly,
+            "hourly" or "hora" or "por hora" => Frequency.Hourly,
+            "daily" or "diario" or "diaria" => Frequency.Daily,
+            "weekly" or "semanal" => Frequency.Weekly,
+            "monthly" or "mensual" => Frequency.Monthly,
             _ => Frequency.Weekly,
         };
     }
@@ -341,11 +341,11 @@ public static class CsvImportHelper
         if (string.IsNullOrWhiteSpace(raw)) return TrackingStatus.NotStarted;
         return Normalize(raw) switch
         {
-            "notstarted" or "not started" or "no iniciado" or "pendiente de iniciar"   => TrackingStatus.NotStarted,
-            "pending" or "pendiente"                                                   => TrackingStatus.Pending,
-            "inprogress" or "in progress" or "en progreso" or "encurso"               => TrackingStatus.InProgress,
-            "lastweek" or "last week" or "ultima semana" or "semana pasada"            => TrackingStatus.LastWeek,
-            "finished" or "terminado" or "completado" or "done" or "hecho"             => TrackingStatus.Finished,
+            "notstarted" or "not started" or "no iniciado" or "pendiente de iniciar" => TrackingStatus.NotStarted,
+            "pending" or "pendiente" => TrackingStatus.Pending,
+            "inprogress" or "in progress" or "en progreso" or "encurso" => TrackingStatus.InProgress,
+            "lastweek" or "last week" or "ultima semana" or "semana pasada" => TrackingStatus.LastWeek,
+            "finished" or "terminado" or "completado" or "done" or "hecho" => TrackingStatus.Finished,
             _ => TrackingStatus.NotStarted,
         };
     }
@@ -361,9 +361,9 @@ public static class CsvImportHelper
             result |= Normalize(part) switch
             {
                 "mounts" or "montura" or "monturas" => MotiveFlags.Mounts,
-                "transmog" or "transmogrification"  => MotiveFlags.Transmog,
-                "reputation" or "reputacion"        => MotiveFlags.Reputation,
-                "anima"                             => MotiveFlags.Anima,
+                "transmog" or "transmogrification" => MotiveFlags.Transmog,
+                "reputation" or "reputacion" => MotiveFlags.Reputation,
+                "anima" => MotiveFlags.Anima,
                 "achievement" or "logro" or "logros" => MotiveFlags.Achievement,
                 _ => MotiveFlags.None,
             };
@@ -375,9 +375,9 @@ public static class CsvImportHelper
 
     private static string Normalize(string raw)
     {
-        var lower    = raw.Trim().ToLowerInvariant();
+        var lower = raw.Trim().ToLowerInvariant();
         var decomposed = lower.Normalize(System.Text.NormalizationForm.FormD);
-        var clean    = new string(decomposed
+        var clean = new string(decomposed
             .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
                 != System.Globalization.UnicodeCategory.NonSpacingMark)
             .ToArray());
