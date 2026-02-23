@@ -1,6 +1,7 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
+
 COPY WarcraftArchive.Api.csproj .
 RUN dotnet restore WarcraftArchive.Api.csproj
 
