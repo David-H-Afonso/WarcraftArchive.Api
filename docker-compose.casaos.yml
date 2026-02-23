@@ -1,0 +1,123 @@
+# 
+# WarcraftArchive  CasaOS Docker Compose
+# 
+#
+# Images built automatically by GitHub Actions on every push:
+#    Frontend  master  ghcr.io/david-h-afonso/warcraftarchive-front:latest
+#    Backend   master  ghcr.io/david-h-afonso/warcraftarchive-api:latest
+#
+# PORTS:
+#    Frontend  http://[CASAOS-IP]:2003
+#    Backend   http://[CASAOS-IP]:2004  (direct access / debugging / Swagger)
+#
+# The frontend nginx proxies all API calls internally to warcraftarchive-api.
+# The browser only ever needs to reach port 2003.
+#
+#   Before first run:
+#   1. Change JWT_SECRET_KEY to any random string  32 chars
+#   2. Change SEED_ADMIN_PASSWORD
+#   3. Replace 192.168.1.x in CORS_ALLOWED_ORIGINS with your CasaOS machine IP
+#   4. Make the GHCR packages public OR:
+#      echo ghp_TOKEN | docker login ghcr.io -u david-h-afonso --password-stdin
+#
+# DEPLOY:
+#   docker compose -f docker-compose.casaos.yml up -d
+#
+# 
+
+name: warcraftarchive
+
+x-casaos-config:
+  title: "WarcraftArchive"
+  description: "Gestión de personajes, contenido y seguimiento de progreso en World of Warcraft"
+  icon: "https://cdn-icons-png.flaticon.com/512/5229/5229359.png"
+  web_ui_port: 2003
+  category: "Entertainment"
+  tagline: "Tu archivo de Warcraft, siempre contigo"
+  author: "David H. Afonso"
+  thumbnail: "https://cdn-icons-png.flaticon.com/512/5229/5229359.png"
+
+services:
+  #  Backend 
+  warcraftarchive-api:
+    image: ghcr.io/david-h-afonso/warcraftarchive-api:latest
+    container_name: warcraftarchive-api
+    restart: unless-stopped
+    networks:
+      - warcraftarchive-net
+    ports:
+      - "2004:8080"
+    volumes:
+      - /DATA/AppData/warcraftarchive/db:/data
+      - /DATA/AppData/warcraftarchive/csv:/csv
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ALLOWEDHOSTS: "*"
+
+      # Database
+      DATABASE_PATH: /data/warcraftarchive.db
+
+      # JWT    Change JWT_SECRET_KEY before first run
+      JWT_SECRET_KEY: "ChangeThisToASecureRandomStringOf32PlusChars!"
+      JWT_ISSUER: "WarcraftArchive.Api"
+      JWT_AUDIENCE: "WarcraftArchive.Client"
+      JWT_ACCESS_TOKEN_MINUTES: "15"
+      JWT_REFRESH_TOKEN_DAYS: "30"
+
+      # CORS  browser origin (nginx proxy, so browser hits port 2003)
+      #   Replace 192.168.1.x with your CasaOS machine IP
+      CORS_ALLOWED_ORIGINS: "http://localhost:2003,http://192.168.1.x:2003"
+
+      # Admin seed  created on first run    Change password, disable after first run
+      SEED_ADMIN_ENABLED: "true"
+      SEED_ADMIN_EMAIL: "admin@local"
+      SEED_ADMIN_USERNAME: "admin"
+      SEED_ADMIN_PASSWORD: "Admin123!"
+
+      # Demo import (optional  mount CSVs in /DATA/AppData/warcraftarchive/csv)
+      DEMO_IMPORT_ENABLED: "false"
+      CSV_DATA_PATH: "/csv"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    labels:
+      - "casaos.name=WarcraftArchive API"
+      - "casaos.category=Entertainment"
+      - "casaos.description=Backend API para WarcraftArchive"
+      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/5229/5229359.png"
+      - "casaos.port=2004"
+
+  #  Frontend 
+  warcraftarchive-front:
+    image: ghcr.io/david-h-afonso/warcraftarchive-front:latest
+    container_name: warcraftarchive-front
+    restart: unless-stopped
+    networks:
+      - warcraftarchive-net
+    ports:
+      - "2003:80"
+    environment:
+      # Empty  nginx inside the container proxies API calls to warcraftarchive-api:8080
+      # The browser never needs to know port 2004 exists.
+      API_BASE_URL: ""
+    depends_on:
+      warcraftarchive-api:
+        condition: service_healthy
+    labels:
+      - "casaos.name=WarcraftArchive"
+      - "casaos.category=Entertainment"
+      - "casaos.description=Interfaz web de WarcraftArchive"
+      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/5229/5229359.png"
+      - "casaos.web_ui=http://localhost:2003"
+      - "casaos.port=2003"
+      - "casaos.main=true"
+
+#  Networks 
+networks:
+  warcraftarchive-net:
+    driver: bridge
