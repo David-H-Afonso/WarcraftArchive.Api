@@ -136,6 +136,14 @@ public class AuthService : IAuthService
         return user;
     }
 
+    // ── Get All Users ─────────────────────────────────────────────────────────
+
+    public async Task<List<UserDto>> GetAllUsersAsync() =>
+        await _context.Users
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => new UserDto(u.Id, u.Email, u.UserName, u.IsAdmin, u.IsActive, u.CreatedAt, u.UpdatedAt))
+            .ToListAsync();
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     public string HashPassword(string password) =>

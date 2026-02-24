@@ -10,6 +10,12 @@ public static class AdminEndpoints
     {
         var group = app.MapGroup("/admin").WithTags("Admin").RequireAuthorization();
 
+        group.MapGet("/users", async (IAuthService authService, HttpContext ctx) =>
+        {
+            if (!ctx.IsAdmin()) return Results.Forbid();
+            return Results.Ok(await authService.GetAllUsersAsync());
+        }).WithName("GetUsers").WithSummary("Admin: list all users");
+
         group.MapPost("/users", async (CreateUserRequest request, IAuthService authService, HttpContext ctx) =>
         {
             if (!ctx.IsAdmin()) return Results.Forbid();
@@ -27,3 +33,4 @@ public static class AdminEndpoints
         }).WithName("CreateUser").WithSummary("Admin: create a new user");
     }
 }
+

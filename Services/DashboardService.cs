@@ -19,7 +19,7 @@ public class DashboardService : IDashboardService
     {
         var items = await _context.Trackings
             .Include(t => t.Character)
-            .Include(t => t.Content)
+            .Include(t => t.Content).ThenInclude(c => c.Motives)
             .Where(t => t.Frequency == Frequency.Weekly)
             .OrderBy(t => t.Status)
             .ThenBy(t => t.Content.Expansion)

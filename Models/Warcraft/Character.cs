@@ -6,8 +6,9 @@ public class Character
     public string Name { get; set; } = string.Empty;
     public int? Level { get; set; }
     public string Class { get; set; } = string.Empty;
+    public string? Race { get; set; }
     public string? Covenant { get; set; }
-    public string? Warband { get; set; }
+    public Guid? WarbandId { get; set; }
 
     /// <summary>
     /// Owner — nullable to allow future multi-user scenarios.
@@ -20,5 +21,6 @@ public class Character
 
     // Navigation
     public Auth.User? OwnerUser { get; set; }
+    public Auth.Warband? Warband { get; set; }
     public ICollection<Tracking> Trackings { get; set; } = [];
 }

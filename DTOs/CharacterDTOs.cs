@@ -4,16 +4,18 @@ public record CreateCharacterRequest(
     string Name,
     int? Level,
     string Class,
+    string? Race,
     string? Covenant,
-    string? Warband,
+    Guid? WarbandId,
     Guid? OwnerUserId);
 
 public record UpdateCharacterRequest(
     string Name,
     int? Level,
     string Class,
+    string? Race,
     string? Covenant,
-    string? Warband,
+    Guid? WarbandId,
     Guid? OwnerUserId);
 
 public record CharacterDto(
@@ -21,8 +23,11 @@ public record CharacterDto(
     string Name,
     int? Level,
     string Class,
+    string? Race,
     string? Covenant,
-    string? Warband,
+    Guid? WarbandId,
+    string? WarbandName,
+    string? WarbandColor,
     Guid? OwnerUserId,
     string? OwnerUserName,
     DateTime CreatedAt,

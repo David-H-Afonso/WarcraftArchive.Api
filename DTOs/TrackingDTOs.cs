@@ -22,6 +22,8 @@ public record TrackingDto(
     Guid Id,
     Guid CharacterId,
     string CharacterName,
+    string? CharacterClass,
+    string? CharacterRace,
     Guid ContentId,
     string ContentName,
     string Expansion,
@@ -42,3 +44,4 @@ public record WeeklyDashboardDto(
     int LastWeek,
     int Finished,
     List<TrackingDto> Items);
+

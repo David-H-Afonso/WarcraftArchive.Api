@@ -9,9 +9,9 @@ public static class CharacterEndpoints
     {
         var group = app.MapGroup("/characters").WithTags("Characters").RequireAuthorization();
 
-        group.MapGet("/", async (ICharacterService service) =>
-            Results.Ok(await service.GetAllAsync())
-        ).WithName("GetCharacters").WithSummary("List all characters");
+        group.MapGet("/", async (ICharacterService service, Guid? ownerUserId) =>
+            Results.Ok(await service.GetAllAsync(ownerUserId))
+        ).WithName("GetCharacters").WithSummary("List all characters, optionally filtered by ownerUserId");
 
         group.MapGet("/{id:guid}", async (Guid id, ICharacterService service) =>
         {

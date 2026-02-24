@@ -13,14 +13,10 @@ public class Content
     /// </summary>
     public int AllowedDifficulties { get; set; }
 
-    /// <summary>
-    /// Bitmask of <see cref="MotiveFlags"/>. CSV source: "Mounts,Transmog" → split and OR the flags.
-    /// </summary>
-    public int Motives { get; set; }
-
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
     // Navigation
     public ICollection<Tracking> Trackings { get; set; } = [];
+    public ICollection<Auth.UserMotive> Motives { get; set; } = [];
 }

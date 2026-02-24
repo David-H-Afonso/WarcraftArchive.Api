@@ -16,10 +16,11 @@ public static class TrackingEndpoints
             TrackingStatus? status,
             Frequency? frequency,
             string? expansion,
-            MotiveFlags? motive) =>
-            Results.Ok(await service.GetAllAsync(characterId, status, frequency, expansion, motive))
+            Guid? motiveId,
+            Guid? contentId) =>
+            Results.Ok(await service.GetAllAsync(characterId, status, frequency, expansion, motiveId, contentId))
         ).WithName("GetTrackings")
-         .WithSummary("List trackings with optional filters: characterId, status, frequency, expansion, motive");
+         .WithSummary("List trackings with optional filters: characterId, status, frequency, expansion, motiveId, contentId");
 
         group.MapGet("/{id:guid}", async (Guid id, ITrackingService service) =>
         {

@@ -166,6 +166,8 @@ builder.Services.AddScoped<ICharacterService, CharacterService>();
 builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IWarbandService, WarbandService>();
+builder.Services.AddScoped<IUserMotiveService, UserMotiveService>();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
@@ -236,6 +238,8 @@ app.MapCharacterEndpoints();
 app.MapContentEndpoints();
 app.MapTrackingEndpoints();
 app.MapDashboardEndpoints();
+app.MapWarbandEndpoints();
+app.MapUserMotiveEndpoints();
 
 app.Run();
 
@@ -245,7 +249,11 @@ static async Task<User?> SeedAdminAsync(AppDbContext db, SeedSettings settings, 
 {
     if (!settings.AdminEnabled) return null;
     var existing = await db.Users.FirstOrDefaultAsync(u => u.IsAdmin);
-    if (existing != null) return existing;
+    if (existing != null)
+    {
+        await SeedDefaultUserDataAsync(db, existing.Id, logger);
+        return existing;
+    }
 
     var passwordHash = BCrypt.Net.BCrypt.HashPassword(settings.AdminPassword, workFactor: 12);
     var admin = new User
@@ -259,7 +267,38 @@ static async Task<User?> SeedAdminAsync(AppDbContext db, SeedSettings settings, 
     db.Users.Add(admin);
     await db.SaveChangesAsync();
     logger.LogInformation("Seed: admin user created ({Email})", settings.AdminEmail);
+    await SeedDefaultUserDataAsync(db, admin.Id, logger);
     return admin;
+}
+
+static async Task SeedDefaultUserDataAsync(AppDbContext db, Guid userId, ILogger logger)
+{
+    // Default warband
+    if (!await db.Warbands.AnyAsync(w => w.OwnerUserId == userId && w.Name == "Favourites"))
+    {
+        db.Warbands.Add(new Warband { Name = "Favourites", Color = "#7c8cff", OwnerUserId = userId });
+        logger.LogInformation("Seed: default warband created for user {UserId}", userId);
+    }
+
+    // Default motives
+    var defaultMotives = new[]
+    {
+        ("Mounts",      "#e8a44a"),
+        ("Transmog",    "#a855f7"),
+        ("Achievement", "#3b82f6"),
+        ("Anima",       "#6366f1"),
+        ("Reputation",  "#10b981"),
+        ("Toys",        "#ec4899"),
+    };
+    foreach (var (name, color) in defaultMotives)
+    {
+        if (!await db.UserMotives.AnyAsync(m => m.OwnerUserId == userId && m.Name == name))
+        {
+            db.UserMotives.Add(new UserMotive { Name = name, Color = color, OwnerUserId = userId });
+        }
+    }
+
+    await db.SaveChangesAsync();
 }
 
 static void ApplyEnvOverride(IConfigurationRoot config, string key, string envVar)

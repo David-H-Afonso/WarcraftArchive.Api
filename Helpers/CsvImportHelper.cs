@@ -60,13 +60,28 @@ public static class CsvImportHelper
             var levelStr = GetColumn(row, "Level", "Nivel");
             int? level = int.TryParse(levelStr, out var lv) ? lv : null;
 
+            var warbandName = NullIfEmpty(GetColumn(row, "Warband", "Banda de guerra", "Grupo"));
+            Guid? warbandId = null;
+            if (warbandName != null)
+            {
+                var warband = await db.Warbands.FirstOrDefaultAsync(w => w.OwnerUserId == adminUser.Id && w.Name == warbandName);
+                if (warband == null)
+                {
+                    warband = new Warband { Name = warbandName, OwnerUserId = adminUser.Id };
+                    db.Warbands.Add(warband);
+                    await db.SaveChangesAsync();
+                }
+                warbandId = warband.Id;
+            }
+
             var character = new Character
             {
                 Name = name,
                 Level = level,
                 Class = GetColumn(row, "Class", "Clase") is { Length: > 0 } cls ? cls : "Unknown",
+                Race = NullIfEmpty(GetColumn(row, "Race", "Raza")),
                 Covenant = NullIfEmpty(GetColumn(row, "Covenant", "Pacto")),
-                Warband = NullIfEmpty(GetColumn(row, "Warband", "Banda de guerra", "Grupo")),
+                WarbandId = warbandId,
                 OwnerUserId = adminUser.Id,
             };
             db.Characters.Add(character);
@@ -85,6 +100,9 @@ public static class CsvImportHelper
         var rows = ParseCsv(filePath);
         var imported = 0;
 
+        // Resolve admin user for motives
+        var adminUser = await db.Users.FirstOrDefaultAsync(u => u.IsAdmin);
+
         foreach (var row in rows)
         {
             var name = ExtractName(GetColumn(row, "Name", "Nombre", "Instance", "Raid", "Dungeon"));
@@ -100,13 +118,32 @@ public static class CsvImportHelper
             var motiveStr = GetColumn(row, "Motives", "Motivos", "Motive", "Motivo", "Goals", "Objetivo");
             var comment = NullIfEmpty(GetColumn(row, "Comment", "Comentario", "Notes", "Notas"));
 
+            // Resolve UserMotives
+            var motiveEntities = new List<UserMotive>();
+            if (adminUser != null && !string.IsNullOrWhiteSpace(motiveStr))
+            {
+                foreach (var part in motiveStr.Split(',', ';'))
+                {
+                    var motiveName = ExtractName(part.Trim());
+                    if (string.IsNullOrWhiteSpace(motiveName)) continue;
+                    var motive = await db.UserMotives.FirstOrDefaultAsync(m => m.OwnerUserId == adminUser.Id && m.Name == motiveName);
+                    if (motive == null)
+                    {
+                        motive = new UserMotive { Name = motiveName, OwnerUserId = adminUser.Id };
+                        db.UserMotives.Add(motive);
+                        await db.SaveChangesAsync();
+                    }
+                    motiveEntities.Add(motive);
+                }
+            }
+
             var content = new Content
             {
                 Name = name,
                 Expansion = expansion,
                 Comment = comment,
                 AllowedDifficulties = (int)ParseDifficultyFlags(diffStr),
-                Motives = (int)ParseMotiveFlags(motiveStr),
+                Motives = motiveEntities,
             };
             db.Contents.Add(content);
             imported++;

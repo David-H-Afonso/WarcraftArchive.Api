@@ -13,4 +13,6 @@ public class User
 
     // Navigation
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<Warband> Warbands { get; set; } = [];
+    public ICollection<UserMotive> UserMotives { get; set; } = [];
 }

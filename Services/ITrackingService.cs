@@ -7,7 +7,7 @@ public interface ITrackingService
 {
     Task<List<TrackingDto>> GetAllAsync(
         Guid? characterId, TrackingStatus? status, Frequency? frequency,
-        string? expansion, MotiveFlags? motive);
+        string? expansion, Guid? motiveId, Guid? contentId);
 
     Task<TrackingDto?> GetByIdAsync(Guid id);
     Task<(TrackingDto? Dto, string? Error)> CreateAsync(CreateTrackingRequest request);
