@@ -231,6 +231,11 @@ public static class CsvImportHelper
     internal static List<Dictionary<string, string>> ParseCsv(string filePath)
     {
         var text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+        return ParseCsvText(text);
+    }
+
+    public static List<Dictionary<string, string>> ParseCsvText(string text)
+    {
         var lines = SplitCsvLines(text);
         var result = new List<Dictionary<string, string>>();
         if (lines.Count == 0) return result;
@@ -247,7 +252,6 @@ public static class CsvImportHelper
         }
         return result;
     }
-
     private static List<string> SplitCsvLines(string text)
     {
         var lines = new List<string>();
@@ -317,7 +321,7 @@ public static class CsvImportHelper
 
     // ── Difficulty flags: "Heróico, Mítico" → DifficultyFlags ────────────────
 
-    internal static DifficultyFlags ParseDifficultyFlags(string raw)
+    public static DifficultyFlags ParseDifficultyFlags(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return DifficultyFlags.None;
         var result = DifficultyFlags.None;
@@ -342,7 +346,7 @@ public static class CsvImportHelper
 
     // ── Single difficulty: "Mythic" → Difficulty ─────────────────────────────
 
-    internal static Difficulty ParseDifficulty(string raw)
+    public static Difficulty ParseDifficulty(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return Difficulty.Normal;
         var s = Normalize(raw);
@@ -358,7 +362,7 @@ public static class CsvImportHelper
 
     // ── Frequency ─────────────────────────────────────────────────────────────
 
-    internal static Frequency ParseFrequency(string raw)
+    public static Frequency ParseFrequency(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return Frequency.Weekly;
         return Normalize(raw) switch
@@ -373,7 +377,7 @@ public static class CsvImportHelper
 
     // ── TrackingStatus ────────────────────────────────────────────────────────
 
-    internal static TrackingStatus ParseTrackingStatus(string raw)
+    public static TrackingStatus ParseTrackingStatus(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return TrackingStatus.NotStarted;
         return Normalize(raw) switch

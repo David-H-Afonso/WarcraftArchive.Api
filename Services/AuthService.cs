@@ -136,6 +136,27 @@ public class AuthService : IAuthService
         return user;
     }
 
+    // ── Update User ───────────────────────────────────────────────────────────
+
+    public async Task<UserDto?> UpdateUserAsync(Guid id, UpdateUserRequest req)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return null;
+
+        user.Email = req.Email;
+        user.UserName = req.UserName;
+        user.IsAdmin = req.IsAdmin;
+        user.IsActive = req.IsActive;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(req.Password))
+            user.PasswordHash = HashPassword(req.Password);
+
+        await _context.SaveChangesAsync();
+        return new UserDto(user.Id, user.Email, user.UserName, user.IsAdmin, user.IsActive,
+            user.CreatedAt, user.UpdatedAt);
+    }
+
     // ── Get All Users ─────────────────────────────────────────────────────────
 
     public async Task<List<UserDto>> GetAllUsersAsync() =>

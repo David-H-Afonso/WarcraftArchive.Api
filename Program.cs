@@ -240,6 +240,7 @@ app.MapTrackingEndpoints();
 app.MapDashboardEndpoints();
 app.MapWarbandEndpoints();
 app.MapUserMotiveEndpoints();
+app.MapDataEndpoints();
 
 app.Run();
 

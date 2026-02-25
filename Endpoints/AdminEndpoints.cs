@@ -31,6 +31,14 @@ public static class AdminEndpoints
                 new UserDto(user.Id, user.Email, user.UserName, user.IsAdmin, user.IsActive,
                     user.CreatedAt, user.UpdatedAt));
         }).WithName("CreateUser").WithSummary("Admin: create a new user");
+
+        group.MapPut("/users/{id:guid}", async (Guid id, UpdateUserRequest request, IAuthService authService, HttpContext ctx) =>
+        {
+            if (!ctx.IsAdmin()) return Results.Forbid();
+            var updated = await authService.UpdateUserAsync(id, request);
+            if (updated == null) return Results.NotFound();
+            return Results.Ok(updated);
+        }).WithName("UpdateUser").WithSummary("Admin: update an existing user");
     }
 }
 

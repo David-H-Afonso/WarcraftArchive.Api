@@ -4,6 +4,7 @@ public record LoginRequest(string Email, string Password);
 public record RefreshRequest(string RefreshToken, string? DeviceName = null);
 public record LogoutRequest(string RefreshToken);
 public record CreateUserRequest(string Email, string UserName, string Password, bool IsAdmin = false);
+public record UpdateUserRequest(string Email, string UserName, bool IsAdmin, bool IsActive, string? Password = null);
 
 public record LoginResponse(
     Guid UserId, string Email, string UserName, bool IsAdmin,
