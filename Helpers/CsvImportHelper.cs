@@ -144,6 +144,7 @@ public static class CsvImportHelper
                 Comment = comment,
                 AllowedDifficulties = (int)ParseDifficultyFlags(diffStr),
                 Motives = motiveEntities,
+                OwnerUserId = adminUser?.Id,
             };
             db.Contents.Add(content);
             imported++;
