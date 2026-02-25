@@ -133,7 +133,31 @@ public class AuthService : IAuthService
         };
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        await SeedDefaultUserDataAsync(user.Id);
         return user;
+    }
+
+    private async Task SeedDefaultUserDataAsync(Guid userId)
+    {
+        if (!await _context.Warbands.AnyAsync(w => w.OwnerUserId == userId && w.Name == "Favourites"))
+            _context.Warbands.Add(new Warband { Name = "Favourites", Color = "#7c8cff", OwnerUserId = userId });
+
+        var defaultMotives = new[]
+        {
+            ("Mounts",      "#e8a44a"),
+            ("Transmog",    "#a855f7"),
+            ("Achievement", "#3b82f6"),
+            ("Anima",       "#6366f1"),
+            ("Reputation",  "#10b981"),
+            ("Toys",        "#ec4899"),
+        };
+        foreach (var (name, color) in defaultMotives)
+        {
+            if (!await _context.UserMotives.AnyAsync(m => m.OwnerUserId == userId && m.Name == name))
+                _context.UserMotives.Add(new UserMotive { Name = name, Color = color, OwnerUserId = userId });
+        }
+        await _context.SaveChangesAsync();
     }
 
     // ── Update User ───────────────────────────────────────────────────────────

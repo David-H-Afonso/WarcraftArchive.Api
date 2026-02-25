@@ -243,6 +243,9 @@ namespace WarcraftArchive.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Expansion")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -261,6 +264,8 @@ namespace WarcraftArchive.Api.Migrations
                     b.HasIndex("Expansion");
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("OwnerUserId");
 
                     b.ToTable("Contents");
                 });
@@ -377,6 +382,17 @@ namespace WarcraftArchive.Api.Migrations
 
                     b.Navigation("Warband");
                 });
+
+            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Content", b =>
+                {
+                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("OwnerUser");
+                });
+
 
             modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Tracking", b =>
                 {
