@@ -1,6 +1,10 @@
 namespace WarcraftArchive.Api.Models.Warcraft;
 
-/// <summary>Used as a bitmask on Content.AllowedDifficulties and for individual Tracking rows.</summary>
+/// <summary>
+/// Unified bitmask for difficulties used both in Content.AllowedDifficulties
+/// and as individual Tracking.Difficulty values (single flag per tracking row).
+/// LFR=1, Normal=2, Heroic=4, Mythic=8.
+/// </summary>
 [Flags]
 public enum DifficultyFlags
 {
@@ -11,15 +15,6 @@ public enum DifficultyFlags
     Mythic = 8,
 }
 
-/// <summary>Single difficulty value assigned to a Tracking row.</summary>
-public enum Difficulty
-{
-    LFR = 0,
-    Normal = 1,
-    Heroic = 2,
-    Mythic = 3,
-}
-
 public enum Frequency
 {
     Hourly = 0,
@@ -28,13 +23,19 @@ public enum Frequency
     Monthly = 3,
 }
 
+/// <summary>
+/// Tracking progress status.
+/// LastDay (3) = completed in the previous daily period.
+/// LastWeek (4) = completed in the previous weekly period.
+/// </summary>
 public enum TrackingStatus
 {
     NotStarted = 0,
     Pending = 1,
     InProgress = 2,
-    LastWeek = 3,
-    Finished = 4,
+    LastDay = 3,
+    LastWeek = 4,
+    Finished = 5,
 }
 
 /// <summary>Used as a bitmask on Content.Motives (Notion CSV: "Mounts,Transmog").</summary>

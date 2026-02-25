@@ -31,6 +31,7 @@ public class DashboardService : IDashboardService
             NotStarted: items.Count(t => t.Status == TrackingStatus.NotStarted),
             Pending: items.Count(t => t.Status == TrackingStatus.Pending),
             InProgress: items.Count(t => t.Status == TrackingStatus.InProgress),
+            LastDay: items.Count(t => t.Status == TrackingStatus.LastDay),
             LastWeek: items.Count(t => t.Status == TrackingStatus.LastWeek),
             Finished: items.Count(t => t.Status == TrackingStatus.Finished),
             Items: items.Select(TrackingService.ToDto).ToList());

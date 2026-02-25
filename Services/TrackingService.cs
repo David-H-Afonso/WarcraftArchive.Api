@@ -52,8 +52,8 @@ public class TrackingService : ITrackingService
         if (character == null) return (null, "Character not found.");
         var content = await _context.Contents.FindAsync(request.ContentId);
         if (content == null) return (null, "Content not found.");
-        var diffFlag = DifficultyToFlag(request.Difficulty);
-        if ((content.AllowedDifficulties & (int)diffFlag) == 0)
+        // Difficulty is already a DifficultyFlags single-flag value
+        if ((content.AllowedDifficulties & (int)request.Difficulty) == 0)
             return (null, $"Difficulty '{request.Difficulty}' is not allowed for this content. Allowed: {(DifficultyFlags)content.AllowedDifficulties}");
         var exists = await _context.Trackings.AnyAsync(t => t.CharacterId == request.CharacterId && t.ContentId == request.ContentId && t.Difficulty == request.Difficulty);
         if (exists) return (null, "A tracking entry for this character, content and difficulty already exists.");
@@ -82,8 +82,8 @@ public class TrackingService : ITrackingService
             .Include(t => t.Content).ThenInclude(c => c.Motives)
             .FirstOrDefaultAsync(t => t.Id == id);
         if (tracking == null) return (null, null);
-        var diffFlag = DifficultyToFlag(request.Difficulty);
-        if ((tracking.Content.AllowedDifficulties & (int)diffFlag) == 0)
+        // Difficulty is already a DifficultyFlags single-flag value
+        if ((tracking.Content.AllowedDifficulties & (int)request.Difficulty) == 0)
             return (null, $"Difficulty '{request.Difficulty}' is not allowed for this content. Allowed: {(DifficultyFlags)tracking.Content.AllowedDifficulties}");
         if (request.Difficulty != tracking.Difficulty)
         {
@@ -115,13 +115,4 @@ public class TrackingService : ITrackingService
         t.Difficulty, t.Frequency, t.Status,
         t.Comment, t.LastCompletedAt,
         t.CreatedAt, t.UpdatedAt);
-
-    internal static DifficultyFlags DifficultyToFlag(Difficulty d) => d switch
-    {
-        Difficulty.LFR => DifficultyFlags.LFR,
-        Difficulty.Normal => DifficultyFlags.Normal,
-        Difficulty.Heroic => DifficultyFlags.Heroic,
-        Difficulty.Mythic => DifficultyFlags.Mythic,
-        _ => DifficultyFlags.None,
-    };
 }

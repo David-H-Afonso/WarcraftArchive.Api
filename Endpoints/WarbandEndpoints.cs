@@ -29,6 +29,8 @@ public static class WarbandEndpoints
             if (userId == null) return Results.Unauthorized();
             if (string.IsNullOrWhiteSpace(request.Name))
                 return Results.BadRequest(new { message = "Name is required." });
+            if (request.Name.Length > 12)
+                return Results.BadRequest(new { message = "Warband name must be 12 characters or fewer." });
             var (dto, error) = await service.CreateAsync(userId.Value, request);
             if (error != null) return Results.Conflict(new { message = error });
             return Results.Created($"/warbands/{dto!.Id}", dto);
@@ -40,6 +42,8 @@ public static class WarbandEndpoints
             if (userId == null) return Results.Unauthorized();
             if (string.IsNullOrWhiteSpace(request.Name))
                 return Results.BadRequest(new { message = "Name is required." });
+            if (request.Name.Length > 12)
+                return Results.BadRequest(new { message = "Warband name must be 12 characters or fewer." });
             var dto = await service.UpdateAsync(id, userId.Value, request);
             return dto == null ? Results.NotFound() : Results.Ok(dto);
         }).WithName("UpdateWarband").WithSummary("Update a warband");

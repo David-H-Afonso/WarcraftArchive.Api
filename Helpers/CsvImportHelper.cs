@@ -344,19 +344,19 @@ public static class CsvImportHelper
         return result;
     }
 
-    // ── Single difficulty: "Mythic" → Difficulty ─────────────────────────────
+    // ── Single difficulty: "Mythic" → DifficultyFlags ────────────────────────────────
 
-    public static Difficulty ParseDifficulty(string raw)
+    public static DifficultyFlags ParseDifficulty(string raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return Difficulty.Normal;
+        if (string.IsNullOrWhiteSpace(raw)) return DifficultyFlags.Normal;
         var s = Normalize(raw);
         return s switch
         {
-            "lfr" or "buscador" => Difficulty.LFR,
-            "normal" => Difficulty.Normal,
-            "heroic" or "heroico" => Difficulty.Heroic,
-            "mythic" or "mitico" => Difficulty.Mythic,
-            _ => Difficulty.Normal,
+            "lfr" or "buscador" => DifficultyFlags.LFR,
+            "normal" => DifficultyFlags.Normal,
+            "heroic" or "heroico" => DifficultyFlags.Heroic,
+            "mythic" or "mitico" => DifficultyFlags.Mythic,
+            _ => DifficultyFlags.Normal,
         };
     }
 
@@ -385,6 +385,7 @@ public static class CsvImportHelper
             "notstarted" or "not started" or "no iniciado" or "pendiente de iniciar" => TrackingStatus.NotStarted,
             "pending" or "pendiente" => TrackingStatus.Pending,
             "inprogress" or "in progress" or "en progreso" or "encurso" => TrackingStatus.InProgress,
+            "lastday" or "last day" or "ultimo dia" or "dia pasado" => TrackingStatus.LastDay,
             "lastweek" or "last week" or "ultima semana" or "semana pasada" => TrackingStatus.LastWeek,
             "finished" or "terminado" or "completado" or "done" or "hecho" => TrackingStatus.Finished,
             _ => TrackingStatus.NotStarted,

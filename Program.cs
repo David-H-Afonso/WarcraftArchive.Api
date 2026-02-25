@@ -241,6 +241,7 @@ app.MapDashboardEndpoints();
 app.MapWarbandEndpoints();
 app.MapUserMotiveEndpoints();
 app.MapDataEndpoints();
+app.MapResetEndpoints();
 
 app.Run();
 

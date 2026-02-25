@@ -5,14 +5,14 @@ namespace WarcraftArchive.Api.DTOs;
 public record CreateTrackingRequest(
     Guid CharacterId,
     Guid ContentId,
-    Difficulty Difficulty,
+    DifficultyFlags Difficulty,
     Frequency Frequency,
     TrackingStatus Status = TrackingStatus.NotStarted,
     string? Comment = null,
     DateTime? LastCompletedAt = null);
 
 public record UpdateTrackingRequest(
-    Difficulty Difficulty,
+    DifficultyFlags Difficulty,
     Frequency Frequency,
     TrackingStatus Status,
     string? Comment,
@@ -27,7 +27,7 @@ public record TrackingDto(
     Guid ContentId,
     string ContentName,
     string Expansion,
-    Difficulty Difficulty,
+    DifficultyFlags Difficulty,
     Frequency Frequency,
     TrackingStatus Status,
     string? Comment,
@@ -41,6 +41,7 @@ public record WeeklyDashboardDto(
     int NotStarted,
     int Pending,
     int InProgress,
+    int LastDay,
     int LastWeek,
     int Finished,
     List<TrackingDto> Items);

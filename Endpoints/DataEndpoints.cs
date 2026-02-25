@@ -86,11 +86,58 @@ public static class DataEndpoints
             if (adminUser == null) return Results.Problem("No admin user found.");
 
             var imported = 0;
+            var duplicated = 0;
+            var errored = 0;
+            var errors = new List<string>();
+
             foreach (var row in rows)
             {
                 var name = GetCol(row, "Name", "Nombre");
-                if (string.IsNullOrWhiteSpace(name)) continue;
-                if (await db.Characters.AnyAsync(c => c.Name == name)) continue;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    errored++;
+                    errors.Add("Row skipped: name is empty.");
+                    continue;
+                }
+
+                // Validate Class
+                var cls = GetCol(row, "Class", "Clase");
+                if (string.IsNullOrWhiteSpace(cls) || !ValidClasses.Contains(cls))
+                {
+                    errored++;
+                    errors.Add($"'{name}': invalid class '{cls}'.");
+                    continue;
+                }
+
+                // Validate Race (optional but must be valid if provided)
+                var raceRaw = GetColNullable(row, "Race", "Raza");
+                if (raceRaw != null && !ValidRaces.Contains(raceRaw))
+                {
+                    errored++;
+                    errors.Add($"'{name}': invalid race '{raceRaw}'.");
+                    continue;
+                }
+
+                // Validate Level (optional but must be 1-80 if provided)
+                int? level = null;
+                var levelStr = GetCol(row, "Level", "Nivel");
+                if (!string.IsNullOrWhiteSpace(levelStr))
+                {
+                    if (!int.TryParse(levelStr, out var lv) || lv < 1 || lv > 80)
+                    {
+                        errored++;
+                        errors.Add($"'{name}': invalid level '{levelStr}' (must be 1-80).");
+                        continue;
+                    }
+                    level = lv;
+                }
+
+                // Check duplicate
+                if (await db.Characters.AnyAsync(c => c.Name == name))
+                {
+                    duplicated++;
+                    continue;
+                }
 
                 var warbandName = GetColNullable(row, "Warband");
                 Guid? warbandId = null;
@@ -106,12 +153,11 @@ public static class DataEndpoints
                     warbandId = warband.Id;
                 }
 
-                int? level = int.TryParse(GetCol(row, "Level", "Nivel"), out var lv) ? lv : null;
                 db.Characters.Add(new Character
                 {
                     Name = name,
-                    Class = GetCol(row, "Class", "Clase") is { Length: > 0 } cls ? cls : "Unknown",
-                    Race = GetColNullable(row, "Race", "Raza"),
+                    Class = cls,
+                    Race = raceRaw,
                     Level = level,
                     Covenant = GetColNullable(row, "Covenant", "Pacto"),
                     WarbandId = warbandId,
@@ -121,7 +167,7 @@ public static class DataEndpoints
             }
 
             await db.SaveChangesAsync();
-            return Results.Ok(new { imported });
+            return Results.Ok(new { imported, duplicated, errored, errors });
         }).DisableAntiforgery().WithName("ImportCharacters").WithSummary("Admin: import characters from CSV");
 
         group.MapPost("/import/content", async (HttpContext ctx, AppDbContext db, HttpRequest req) =>
@@ -229,6 +275,26 @@ public static class DataEndpoints
             return Results.Ok(new { imported, skipped });
         }).DisableAntiforgery().WithName("ImportProgress").WithSummary("Admin: import progress trackings from CSV");
     }
+
+    // ── Valid WoW class/race lists (mirror wowConstants.ts) ───────────────────
+
+    private static readonly HashSet<string> ValidClasses = new(StringComparer.Ordinal)
+    {
+        "Death Knight", "Demon Hunter", "Druid", "Evoker", "Hunter", "Mage", "Monk",
+        "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior",
+    };
+
+    private static readonly HashSet<string> ValidRaces = new(StringComparer.Ordinal)
+    {
+        // Alliance
+        "Human", "Dwarf", "Night Elf", "Gnome", "Draenei", "Worgen",
+        "Void Elf", "Lightforged Draenei", "Dark Iron Dwarf", "Kul Tiran", "Mechagnome",
+        // Horde
+        "Orc", "Undead", "Tauren", "Troll", "Blood Elf", "Goblin",
+        "Nightborne", "Highmountain Tauren", "Mag'har Orc", "Zandalari Troll", "Vulpera",
+        // Neutral
+        "Pandaren", "Dracthyr", "Earthen",
+    };
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
