@@ -1,4 +1,5 @@
 using WarcraftArchive.Api.DTOs;
+using WarcraftArchive.Api.Helpers;
 using WarcraftArchive.Api.Models.Warcraft;
 using WarcraftArchive.Api.Services;
 
@@ -12,14 +13,18 @@ public static class TrackingEndpoints
 
         group.MapGet("/", async (
             ITrackingService service,
+            HttpContext ctx,
             Guid? characterId,
             TrackingStatus? status,
             Frequency? frequency,
             string? expansion,
             Guid? motiveId,
             Guid? contentId) =>
-            Results.Ok(await service.GetAllAsync(characterId, status, frequency, expansion, motiveId, contentId))
-        ).WithName("GetTrackings")
+        {
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
+            return Results.Ok(await service.GetAllAsync(userId.Value, characterId, status, frequency, expansion, motiveId, contentId));
+        }).WithName("GetTrackings")
          .WithSummary("List trackings with optional filters: characterId, status, frequency, expansion, motiveId, contentId");
 
         group.MapGet("/{id:guid}", async (Guid id, ITrackingService service) =>

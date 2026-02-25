@@ -15,12 +15,12 @@ public class DashboardService : IDashboardService
     /// Aggregates all Weekly trackings grouped by status, plus the full list.
     /// Used as the home screen overview for farming progress.
     /// </summary>
-    public async Task<WeeklyDashboardDto> GetWeeklyAsync()
+    public async Task<WeeklyDashboardDto> GetWeeklyAsync(Guid ownerUserId)
     {
         var items = await _context.Trackings
             .Include(t => t.Character)
             .Include(t => t.Content).ThenInclude(c => c.Motives)
-            .Where(t => t.Frequency == Frequency.Weekly)
+            .Where(t => t.Frequency == Frequency.Weekly && t.Character.OwnerUserId == ownerUserId)
             .OrderBy(t => t.Status)
             .ThenBy(t => t.Content.Expansion)
             .ThenBy(t => t.Content.Name)

@@ -1,4 +1,5 @@
 using WarcraftArchive.Api.DTOs;
+using WarcraftArchive.Api.Helpers;
 using WarcraftArchive.Api.Services;
 
 namespace WarcraftArchive.Api.Endpoints;
@@ -9,9 +10,12 @@ public static class CharacterEndpoints
     {
         var group = app.MapGroup("/characters").WithTags("Characters").RequireAuthorization();
 
-        group.MapGet("/", async (ICharacterService service, Guid? ownerUserId) =>
-            Results.Ok(await service.GetAllAsync(ownerUserId))
-        ).WithName("GetCharacters").WithSummary("List all characters, optionally filtered by ownerUserId");
+        group.MapGet("/", async (ICharacterService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
+            return Results.Ok(await service.GetAllAsync(userId.Value));
+        }).WithName("GetCharacters").WithSummary("List characters for the current user");
 
         group.MapGet("/{id:guid}", async (Guid id, ICharacterService service) =>
         {
@@ -19,14 +23,16 @@ public static class CharacterEndpoints
             return character == null ? Results.NotFound() : Results.Ok(character);
         }).WithName("GetCharacterById").WithSummary("Get a character by ID");
 
-        group.MapPost("/", async (CreateCharacterRequest request, ICharacterService service) =>
+        group.MapPost("/", async (CreateCharacterRequest request, ICharacterService service, HttpContext ctx) =>
         {
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
             if (string.IsNullOrWhiteSpace(request.Name))
                 return Results.BadRequest(new { message = "Name is required." });
             if (string.IsNullOrWhiteSpace(request.Class))
                 return Results.BadRequest(new { message = "Class is required." });
 
-            var character = await service.CreateAsync(request);
+            var character = await service.CreateAsync(userId.Value, request);
             return Results.Created($"/characters/{character.Id}", character);
         }).WithName("CreateCharacter").WithSummary("Create a new character");
 

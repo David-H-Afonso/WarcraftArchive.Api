@@ -6,7 +6,7 @@ namespace WarcraftArchive.Api.Services;
 public interface ITrackingService
 {
     Task<List<TrackingDto>> GetAllAsync(
-        Guid? characterId, TrackingStatus? status, Frequency? frequency,
+        Guid? ownerUserId, Guid? characterId, TrackingStatus? status, Frequency? frequency,
         string? expansion, Guid? motiveId, Guid? contentId);
 
     Task<TrackingDto?> GetByIdAsync(Guid id);

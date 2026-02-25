@@ -4,5 +4,5 @@ namespace WarcraftArchive.Api.Services;
 
 public interface IDashboardService
 {
-    Task<WeeklyDashboardDto> GetWeeklyAsync();
+    Task<WeeklyDashboardDto> GetWeeklyAsync(Guid ownerUserId);
 }

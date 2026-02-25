@@ -11,7 +11,7 @@ public class TrackingService : ITrackingService
     public TrackingService(AppDbContext context) => _context = context;
 
     public async Task<List<TrackingDto>> GetAllAsync(
-        Guid? characterId, TrackingStatus? status, Frequency? frequency,
+        Guid? ownerUserId, Guid? characterId, TrackingStatus? status, Frequency? frequency,
         string? expansion, Guid? motiveId, Guid? contentId)
     {
         var query = _context.Trackings
@@ -19,6 +19,7 @@ public class TrackingService : ITrackingService
             .Include(t => t.Content).ThenInclude(c => c.Motives)
             .AsQueryable();
 
+        if (ownerUserId.HasValue) query = query.Where(t => t.Character.OwnerUserId == ownerUserId.Value);
         if (characterId.HasValue) query = query.Where(t => t.CharacterId == characterId.Value);
         if (status.HasValue) query = query.Where(t => t.Status == status.Value);
         if (frequency.HasValue) query = query.Where(t => t.Frequency == frequency.Value);

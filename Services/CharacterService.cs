@@ -27,7 +27,7 @@ public class CharacterService : ICharacterService
         return c == null ? null : ToDto(c);
     }
 
-    public async Task<CharacterDto> CreateAsync(CreateCharacterRequest request)
+    public async Task<CharacterDto> CreateAsync(Guid ownerUserId, CreateCharacterRequest request)
     {
         var character = new Character
         {
@@ -37,7 +37,7 @@ public class CharacterService : ICharacterService
             Race = request.Race?.Trim(),
             Covenant = request.Covenant?.Trim(),
             WarbandId = request.WarbandId,
-            OwnerUserId = request.OwnerUserId,
+            OwnerUserId = ownerUserId,
         };
         _context.Characters.Add(character);
         await _context.SaveChangesAsync();
