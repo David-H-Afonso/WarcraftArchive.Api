@@ -213,6 +213,7 @@ public static class DataEndpoints
                     Comment = GetColNullable(row, "Comment", "Comentario"),
                     AllowedDifficulties = (int)CsvImportHelper.ParseDifficultyFlags(GetCol(row, "Difficulties", "Dificultades", "AllowedDifficulties")),
                     Motives = motives,
+                    OwnerUserId = adminUser.Id,
                 });
                 imported++;
             }
