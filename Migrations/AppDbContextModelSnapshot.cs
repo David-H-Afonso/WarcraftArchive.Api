@@ -391,8 +391,6 @@ namespace WarcraftArchive.Api.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("OwnerUser");
-
-                    b.Navigation("Trackings");
                 });
 
             modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Tracking", b =>
@@ -429,6 +427,11 @@ namespace WarcraftArchive.Api.Migrations
                 });
 
             modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Character", b =>
+                {
+                    b.Navigation("Trackings");
+                });
+
+            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Content", b =>
                 {
                     b.Navigation("Trackings");
                 });
