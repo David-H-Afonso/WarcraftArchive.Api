@@ -55,5 +55,14 @@ public static class WarbandEndpoints
             var deleted = await service.DeleteAsync(id, userId.Value);
             return deleted ? Results.NoContent() : Results.NotFound();
         }).WithName("DeleteWarband").WithSummary("Delete a warband");
+
+        group.MapPut("/reorder", async (List<ReorderWarbandItem> items, IWarbandService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
+            if (items == null || items.Count == 0) return Results.BadRequest(new { message = "No items provided." });
+            var ok = await service.ReorderAsync(userId.Value, items);
+            return ok ? Results.NoContent() : Results.BadRequest(new { message = "One or more warbands not found." });
+        }).WithName("ReorderWarbands").WithSummary("Reorder warbands for the current user");
     }
 }

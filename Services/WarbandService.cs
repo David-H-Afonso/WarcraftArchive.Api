@@ -14,7 +14,7 @@ public class WarbandService : IWarbandService
     public async Task<List<WarbandDto>> GetAllAsync(Guid ownerUserId) =>
         await _context.Warbands
             .Where(w => w.OwnerUserId == ownerUserId)
-            .OrderBy(w => w.Name)
+            .OrderBy(w => w.SortOrder).ThenBy(w => w.Name)
             .Select(w => ToDto(w))
             .ToListAsync();
 
@@ -31,10 +31,16 @@ public class WarbandService : IWarbandService
         if (exists)
             return (null, "A warband with that name already exists.");
 
+        var maxOrder = await _context.Warbands
+            .Where(w => w.OwnerUserId == ownerUserId)
+            .Select(w => (int?)w.SortOrder)
+            .MaxAsync() ?? -1;
+
         var warband = new Warband
         {
             Name = name,
             Color = request.Color?.Trim(),
+            SortOrder = maxOrder + 1,
             OwnerUserId = ownerUserId,
         };
         _context.Warbands.Add(warband);
@@ -62,5 +68,22 @@ public class WarbandService : IWarbandService
         return true;
     }
 
-    internal static WarbandDto ToDto(Warband w) => new(w.Id, w.Name, w.Color, w.OwnerUserId, w.CreatedAt, w.UpdatedAt);
+    public async Task<bool> ReorderAsync(Guid ownerUserId, List<ReorderWarbandItem> items)
+    {
+        var ids = items.Select(i => i.Id).ToList();
+        var warbands = await _context.Warbands
+            .Where(w => w.OwnerUserId == ownerUserId && ids.Contains(w.Id))
+            .ToListAsync();
+        if (warbands.Count != items.Count) return false;
+
+        foreach (var item in items)
+        {
+            var w = warbands.First(w => w.Id == item.Id);
+            w.SortOrder = item.SortOrder;
+        }
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    internal static WarbandDto ToDto(Warband w) => new(w.Id, w.Name, w.Color, w.SortOrder, w.OwnerUserId, w.CreatedAt, w.UpdatedAt);
 }

@@ -9,4 +9,5 @@ public interface IWarbandService
     Task<(WarbandDto? Dto, string? Error)> CreateAsync(Guid ownerUserId, CreateWarbandRequest request);
     Task<WarbandDto?> UpdateAsync(Guid id, Guid ownerUserId, UpdateWarbandRequest request);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId);
+    Task<bool> ReorderAsync(Guid ownerUserId, List<ReorderWarbandItem> items);
 }
