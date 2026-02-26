@@ -36,7 +36,7 @@ public static class CsvImportHelper
             await ImportContentsAsync(db, contentFile, logger);
 
         if (progressFile != null)
-            await ImportTrackingsAsync(db, progressFile, db, logger);
+            await ImportTrackingsAsync(db, progressFile, adminUser, logger);
 
         logger.LogInformation("CsvImport: done.");
     }
@@ -54,7 +54,7 @@ public static class CsvImportHelper
             var name = ExtractName(GetColumn(row, "Name", "Nombre", "Character", "Personaje"));
             if (string.IsNullOrWhiteSpace(name)) continue;
 
-            var alreadyExists = await db.Characters.AnyAsync(c => c.Name == name);
+            var alreadyExists = await db.Characters.AnyAsync(c => c.OwnerUserId == adminUser.Id && c.Name == name);
             if (alreadyExists) continue;
 
             var levelStr = GetColumn(row, "Level", "Nivel");
@@ -111,7 +111,7 @@ public static class CsvImportHelper
             var expansion = GetColumn(row, "Expansion", "Expansión", "Expansion Name");
             if (string.IsNullOrWhiteSpace(expansion)) expansion = "Unknown";
 
-            var alreadyExists = await db.Contents.AnyAsync(c => c.Name == name && c.Expansion == expansion);
+            var alreadyExists = await db.Contents.AnyAsync(c => c.OwnerUserId == adminUser!.Id && c.Name == name && c.Expansion == expansion);
             if (alreadyExists) continue;
 
             var diffStr = GetColumn(row, "Difficulties", "Dificultades", "Difficulty", "Dificultad", "AllowedDifficulties");
@@ -156,7 +156,7 @@ public static class CsvImportHelper
 
     // ── Trackings ─────────────────────────────────────────────────────────────
 
-    private static async Task ImportTrackingsAsync(AppDbContext db, string filePath, AppDbContext _, ILogger logger)
+    private static async Task ImportTrackingsAsync(AppDbContext db, string filePath, User adminUser, ILogger logger)
     {
         logger.LogInformation("CsvImport: importing trackings from '{File}'", filePath);
         var rows = ParseCsv(filePath);
@@ -174,7 +174,7 @@ public static class CsvImportHelper
                 continue;
             }
 
-            var character = await db.Characters.FirstOrDefaultAsync(c => c.Name == charName);
+            var character = await db.Characters.FirstOrDefaultAsync(c => c.OwnerUserId == adminUser.Id && c.Name == charName);
             if (character == null)
             {
                 logger.LogDebug("CsvImport: character '{Name}' not found — skipping row.", charName);
@@ -182,7 +182,7 @@ public static class CsvImportHelper
                 continue;
             }
 
-            var content = await db.Contents.FirstOrDefaultAsync(c => c.Name == contentName);
+            var content = await db.Contents.FirstOrDefaultAsync(c => c.OwnerUserId == adminUser.Id && c.Name == contentName);
             if (content == null)
             {
                 logger.LogDebug("CsvImport: content '{Name}' not found — skipping row.", contentName);
@@ -326,7 +326,7 @@ public static class CsvImportHelper
     {
         if (string.IsNullOrWhiteSpace(raw)) return DifficultyFlags.None;
         var result = DifficultyFlags.None;
-        foreach (var part in raw.Split(',', '/', ';'))
+        foreach (var part in raw.Split(',', '/', ';', '|'))
         {
             var s = part.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
             s = new string(s.Where(c =>

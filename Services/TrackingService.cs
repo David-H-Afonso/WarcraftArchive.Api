@@ -19,7 +19,11 @@ public class TrackingService : ITrackingService
             .Include(t => t.Content).ThenInclude(c => c.Motives)
             .AsQueryable();
 
-        if (ownerUserId.HasValue) query = query.Where(t => t.Character.OwnerUserId == ownerUserId.Value);
+        if (ownerUserId.HasValue)
+        {
+            query = query.Where(t => t.Character.OwnerUserId == ownerUserId.Value
+                                  && t.Content.OwnerUserId == ownerUserId.Value);
+        }
         if (characterId.HasValue) query = query.Where(t => t.CharacterId == characterId.Value);
         if (status.HasValue) query = query.Where(t => t.Status == status.Value);
         if (frequency.HasValue) query = query.Where(t => t.Frequency == frequency.Value);
@@ -47,12 +51,14 @@ public class TrackingService : ITrackingService
         return t == null ? null : ToDto(t);
     }
 
-    public async Task<(TrackingDto? Dto, string? Error)> CreateAsync(CreateTrackingRequest request)
+    public async Task<(TrackingDto? Dto, string? Error)> CreateAsync(Guid ownerUserId, CreateTrackingRequest request)
     {
         var character = await _context.Characters.FindAsync(request.CharacterId);
         if (character == null) return (null, "Character not found.");
+        if (character.OwnerUserId != ownerUserId) return (null, "Character not found.");
         var content = await _context.Contents.FindAsync(request.ContentId);
         if (content == null) return (null, "Content not found.");
+        if (content.OwnerUserId != ownerUserId) return (null, "Content not found.");
         // Difficulty is already a DifficultyFlags single-flag value
         if ((content.AllowedDifficulties & (int)request.Difficulty) == 0)
             return (null, $"Difficulty '{request.Difficulty}' is not allowed for this content. Allowed: {(DifficultyFlags)content.AllowedDifficulties}");
@@ -76,13 +82,14 @@ public class TrackingService : ITrackingService
         return (ToDto(tracking), null);
     }
 
-    public async Task<(TrackingDto? Dto, string? Error)> UpdateAsync(Guid id, UpdateTrackingRequest request)
+    public async Task<(TrackingDto? Dto, string? Error)> UpdateAsync(Guid id, Guid ownerUserId, UpdateTrackingRequest request)
     {
         var tracking = await _context.Trackings
             .Include(t => t.Character)
             .Include(t => t.Content).ThenInclude(c => c.Motives)
             .FirstOrDefaultAsync(t => t.Id == id);
         if (tracking == null) return (null, null);
+        if (tracking.Character.OwnerUserId != ownerUserId) return (null, null);
         // Difficulty is already a DifficultyFlags single-flag value
         if ((tracking.Content.AllowedDifficulties & (int)request.Difficulty) == 0)
             return (null, $"Difficulty '{request.Difficulty}' is not allowed for this content. Allowed: {(DifficultyFlags)tracking.Content.AllowedDifficulties}");
@@ -100,10 +107,13 @@ public class TrackingService : ITrackingService
         return (ToDto(tracking), null);
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId)
     {
-        var tracking = await _context.Trackings.FindAsync(id);
+        var tracking = await _context.Trackings
+            .Include(t => t.Character)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (tracking == null) return false;
+        if (tracking.Character.OwnerUserId != ownerUserId) return false;
         _context.Trackings.Remove(tracking);
         await _context.SaveChangesAsync();
         return true;

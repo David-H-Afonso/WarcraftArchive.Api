@@ -178,7 +178,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var appLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    db.Database.Migrate();
+    await ApplyMigrationsAsync(db, appLogger);
 
     var seedCfg = scope.ServiceProvider.GetRequiredService<IConfiguration>()
         .GetSection(SeedSettings.SectionName).Get<SeedSettings>() ?? new();
@@ -246,6 +246,79 @@ app.MapResetEndpoints();
 app.Run();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// ── Migration helpers ────────────────────────────────────────────────────────
+
+// Handles two scenarios:
+//   1. Fresh install        → runs the single consolidated migration normally.
+//   2. Existing legacy DB   → patches any missing schema changes caused by the
+//      old multi-migration history, then rewrites __EFMigrationsHistory so EF
+//      recognises the DB as fully up-to-date with the consolidated migration.
+static async Task ApplyMigrationsAsync(AppDbContext db, ILogger logger)
+{
+    // Legacy migration IDs that existed before consolidation
+    string[] legacyIds =
+    [
+        "20260223170050_InitialCreate",
+        "20260224175114_AddWarbandMotiveRace",
+        "20260225000000_UnifyDifficultyBitmaskAndSplitLastStatus",
+        "20260225120000_AddOwnerUserIdToContent",
+    ];
+
+    List<string> applied;
+    try
+    {
+        applied = (await db.Database.GetAppliedMigrationsAsync()).ToList();
+    }
+    catch
+    {
+        // __EFMigrationsHistory doesn't exist yet → brand-new database
+        applied = [];
+    }
+
+    bool hasLegacy = applied.Any(m => legacyIds.Contains(m));
+
+    if (!hasLegacy)
+    {
+        // Normal path: fresh DB or already on the consolidated migration
+        await db.Database.MigrateAsync();
+        return;
+    }
+
+    logger.LogInformation("Legacy migration history detected – patching schema and consolidating history.");
+
+    var conn = db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open)
+        await conn.OpenAsync();
+
+    // ── 1. Ensure OwnerUserId exists on Contents (may be missing if DB was
+    //        stuck before the 4th legacy migration ran)
+    using (var cmd = conn.CreateCommand())
+    {
+        cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Contents') WHERE name='OwnerUserId'";
+        var exists = (long)(await cmd.ExecuteScalarAsync())!;
+        if (exists == 0)
+        {
+            logger.LogInformation("Adding missing OwnerUserId column to Contents table.");
+            cmd.CommandText = "ALTER TABLE Contents ADD COLUMN OwnerUserId TEXT NULL";
+            await cmd.ExecuteNonQueryAsync();
+            cmd.CommandText = "CREATE INDEX IF NOT EXISTS IX_Contents_OwnerUserId ON Contents(OwnerUserId)";
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    // ── 2. Rewrite migration history to the single consolidated migration
+    using (var cmd = conn.CreateCommand())
+    {
+        cmd.CommandText = "DELETE FROM __EFMigrationsHistory";
+        await cmd.ExecuteNonQueryAsync();
+        cmd.CommandText = "INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion) " +
+                          "VALUES ('20260226000000_InitialCreate', '9.0.0')";
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    logger.LogInformation("Schema consolidation complete – database is now on migration 20260226000000_InitialCreate.");
+}
 
 static async Task<User?> SeedAdminAsync(AppDbContext db, SeedSettings settings, ILogger logger)
 {

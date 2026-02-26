@@ -10,7 +10,7 @@ public interface ITrackingService
         string? expansion, Guid? motiveId, Guid? contentId);
 
     Task<TrackingDto?> GetByIdAsync(Guid id);
-    Task<(TrackingDto? Dto, string? Error)> CreateAsync(CreateTrackingRequest request);
-    Task<(TrackingDto? Dto, string? Error)> UpdateAsync(Guid id, UpdateTrackingRequest request);
-    Task<bool> DeleteAsync(Guid id);
+    Task<(TrackingDto? Dto, string? Error)> CreateAsync(Guid ownerUserId, CreateTrackingRequest request);
+    Task<(TrackingDto? Dto, string? Error)> UpdateAsync(Guid id, Guid ownerUserId, UpdateTrackingRequest request);
+    Task<bool> DeleteAsync(Guid id, Guid ownerUserId);
 }

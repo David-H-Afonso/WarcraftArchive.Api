@@ -17,10 +17,12 @@ public static class DataEndpoints
 
         group.MapGet("/export/characters", async (AppDbContext db, HttpContext ctx) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var characters = await db.Characters
                 .Include(c => c.Warband)
+                .Where(c => c.OwnerUserId == userId)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
 
@@ -34,10 +36,12 @@ public static class DataEndpoints
 
         group.MapGet("/export/content", async (AppDbContext db, HttpContext ctx) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var contents = await db.Contents
                 .Include(c => c.Motives)
+                .Where(c => c.OwnerUserId == userId)
                 .OrderBy(c => c.Expansion).ThenBy(c => c.Name)
                 .ToListAsync();
 
@@ -55,11 +59,13 @@ public static class DataEndpoints
 
         group.MapGet("/export/progress", async (AppDbContext db, HttpContext ctx) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var trackings = await db.Trackings
                 .Include(t => t.Character)
                 .Include(t => t.Content)
+                .Where(t => t.Character.OwnerUserId == userId)
                 .OrderBy(t => t.Content.Name).ThenBy(t => t.Character.Name)
                 .ToListAsync();
 
@@ -75,15 +81,14 @@ public static class DataEndpoints
 
         group.MapPost("/import/characters", async (HttpContext ctx, AppDbContext db, HttpRequest req) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var text = await ReadBody(req);
             if (string.IsNullOrWhiteSpace(text))
                 return Results.BadRequest(new { message = "No CSV content provided." });
 
             var rows = CsvImportHelper.ParseCsvText(text);
-            var adminUser = await db.Users.FirstOrDefaultAsync(u => u.IsAdmin);
-            if (adminUser == null) return Results.Problem("No admin user found.");
 
             var imported = 0;
             var duplicated = 0;
@@ -133,7 +138,7 @@ public static class DataEndpoints
                 }
 
                 // Check duplicate
-                if (await db.Characters.AnyAsync(c => c.Name == name))
+                if (await db.Characters.AnyAsync(c => c.OwnerUserId == userId && c.Name == name))
                 {
                     duplicated++;
                     continue;
@@ -143,10 +148,10 @@ public static class DataEndpoints
                 Guid? warbandId = null;
                 if (warbandName != null)
                 {
-                    var warband = await db.Warbands.FirstOrDefaultAsync(w => w.OwnerUserId == adminUser.Id && w.Name == warbandName);
+                    var warband = await db.Warbands.FirstOrDefaultAsync(w => w.OwnerUserId == userId && w.Name == warbandName);
                     if (warband == null)
                     {
-                        warband = new Warband { Name = warbandName, OwnerUserId = adminUser.Id };
+                        warband = new Warband { Name = warbandName, OwnerUserId = userId.Value };
                         db.Warbands.Add(warband);
                         await db.SaveChangesAsync();
                     }
@@ -161,7 +166,7 @@ public static class DataEndpoints
                     Level = level,
                     Covenant = GetColNullable(row, "Covenant", "Pacto"),
                     WarbandId = warbandId,
-                    OwnerUserId = adminUser.Id,
+                    OwnerUserId = userId,
                 });
                 imported++;
             }
@@ -172,23 +177,52 @@ public static class DataEndpoints
 
         group.MapPost("/import/content", async (HttpContext ctx, AppDbContext db, HttpRequest req) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var text = await ReadBody(req);
             if (string.IsNullOrWhiteSpace(text))
                 return Results.BadRequest(new { message = "No CSV content provided." });
 
             var rows = CsvImportHelper.ParseCsvText(text);
-            var adminUser = await db.Users.FirstOrDefaultAsync(u => u.IsAdmin);
-            if (adminUser == null) return Results.Problem("No admin user found.");
 
             var imported = 0;
+            var duplicated = 0;
+            var errored = 0;
+            var errors = new List<string>();
+
             foreach (var row in rows)
             {
                 var name = GetCol(row, "Name", "Nombre");
-                var expansion = GetCol(row, "Expansion") is { Length: > 0 } exp ? exp : "Unknown";
-                if (string.IsNullOrWhiteSpace(name)) continue;
-                if (await db.Contents.AnyAsync(c => c.Name == name && c.Expansion == expansion)) continue;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    errored++;
+                    errors.Add("Row skipped: name is empty.");
+                    continue;
+                }
+
+                var expansion = GetCol(row, "Expansion");
+                if (string.IsNullOrWhiteSpace(expansion))
+                {
+                    errored++;
+                    errors.Add($"'{name}': expansion is required.");
+                    continue;
+                }
+
+                var diffStr = GetCol(row, "Difficulties", "Dificultades", "AllowedDifficulties");
+                var allowedDifficulties = (int)CsvImportHelper.ParseDifficultyFlags(diffStr);
+                if (allowedDifficulties == 0)
+                {
+                    errored++;
+                    errors.Add($"'{name}': no valid difficulties found in '{diffStr}'. Use LFR, Normal, Heroic, Mythic separated by |.");
+                    continue;
+                }
+
+                if (await db.Contents.AnyAsync(c => c.OwnerUserId == userId && c.Name == name && c.Expansion == expansion))
+                {
+                    duplicated++;
+                    continue;
+                }
 
                 var motiveStr = GetCol(row, "Motives", "Motivos");
                 var motives = new List<UserMotive>();
@@ -196,10 +230,10 @@ public static class DataEndpoints
                 {
                     var mn = part.Trim();
                     if (string.IsNullOrWhiteSpace(mn)) continue;
-                    var m = await db.UserMotives.FirstOrDefaultAsync(x => x.OwnerUserId == adminUser.Id && x.Name == mn);
+                    var m = await db.UserMotives.FirstOrDefaultAsync(x => x.OwnerUserId == userId && x.Name == mn);
                     if (m == null)
                     {
-                        m = new UserMotive { Name = mn, OwnerUserId = adminUser.Id };
+                        m = new UserMotive { Name = mn, OwnerUserId = userId.Value };
                         db.UserMotives.Add(m);
                         await db.SaveChangesAsync();
                     }
@@ -211,20 +245,21 @@ public static class DataEndpoints
                     Name = name,
                     Expansion = expansion,
                     Comment = GetColNullable(row, "Comment", "Comentario"),
-                    AllowedDifficulties = (int)CsvImportHelper.ParseDifficultyFlags(GetCol(row, "Difficulties", "Dificultades", "AllowedDifficulties")),
+                    AllowedDifficulties = allowedDifficulties,
                     Motives = motives,
-                    OwnerUserId = adminUser.Id,
+                    OwnerUserId = userId,
                 });
                 imported++;
             }
 
             await db.SaveChangesAsync();
-            return Results.Ok(new { imported });
+            return Results.Ok(new { imported, duplicated, errored, errors });
         }).DisableAntiforgery().WithName("ImportContent").WithSummary("Admin: import content from CSV");
 
         group.MapPost("/import/progress", async (HttpContext ctx, AppDbContext db, HttpRequest req) =>
         {
-            if (!ctx.IsAdmin()) return Results.Forbid();
+            var userId = ctx.GetUserId();
+            if (userId == null) return Results.Unauthorized();
 
             var text = await ReadBody(req);
             if (string.IsNullOrWhiteSpace(text))
@@ -232,7 +267,9 @@ public static class DataEndpoints
 
             var rows = CsvImportHelper.ParseCsvText(text);
             var imported = 0;
-            var skipped = 0;
+            var duplicated = 0;
+            var errored = 0;
+            var errors = new List<string>();
 
             foreach (var row in rows)
             {
@@ -240,18 +277,39 @@ public static class DataEndpoints
                 var contentName = GetCol(row, "Content", "Contenido");
                 if (string.IsNullOrWhiteSpace(charName) || string.IsNullOrWhiteSpace(contentName))
                 {
-                    skipped++;
+                    errored++;
+                    errors.Add("Row skipped: character or content name is empty.");
                     continue;
                 }
 
-                var character = await db.Characters.FirstOrDefaultAsync(c => c.Name == charName);
-                var content = await db.Contents.FirstOrDefaultAsync(c => c.Name == contentName);
-                if (character == null || content == null) { skipped++; continue; }
+                var character = await db.Characters.FirstOrDefaultAsync(c => c.OwnerUserId == userId && c.Name == charName);
+                if (character == null)
+                {
+                    errored++;
+                    errors.Add($"Character '{charName}' not found.");
+                    continue;
+                }
 
-                var difficulty = CsvImportHelper.ParseDifficulty(GetCol(row, "Difficulty", "Dificultad"));
+                var content = await db.Contents.FirstOrDefaultAsync(c => c.OwnerUserId == userId && c.Name == contentName);
+                if (content == null)
+                {
+                    errored++;
+                    errors.Add($"Content '{contentName}' not found.");
+                    continue;
+                }
+
+                var diffStr = GetCol(row, "Difficulty", "Dificultad");
+                var difficulty = CsvImportHelper.ParseDifficulty(diffStr);
+                if ((content.AllowedDifficulties & (int)difficulty) == 0)
+                {
+                    errored++;
+                    errors.Add($"'{charName}' / '{contentName}': difficulty '{diffStr}' is not allowed for this content.");
+                    continue;
+                }
+
                 if (await db.Trackings.AnyAsync(t => t.CharacterId == character.Id && t.ContentId == content.Id && t.Difficulty == difficulty))
                 {
-                    skipped++;
+                    duplicated++;
                     continue;
                 }
 
@@ -273,7 +331,7 @@ public static class DataEndpoints
             }
 
             await db.SaveChangesAsync();
-            return Results.Ok(new { imported, skipped });
+            return Results.Ok(new { imported, duplicated, errored, errors });
         }).DisableAntiforgery().WithName("ImportProgress").WithSummary("Admin: import progress trackings from CSV");
     }
 

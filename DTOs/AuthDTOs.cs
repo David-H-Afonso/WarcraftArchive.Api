@@ -17,3 +17,5 @@ public record UserDto(
     DateTime CreatedAt, DateTime UpdatedAt);
 
 public record MeResponse(Guid UserId, string Email, string UserName, bool IsAdmin);
+
+public record ClaimOrphanRequest(Guid UserId);
