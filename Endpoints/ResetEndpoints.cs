@@ -18,7 +18,7 @@ public static class ResetEndpoints
             return Results.Ok(new { affected, message = $"Daily reset applied. {affected} tracking(s) updated." });
         })
         .WithName("TriggerDailyReset")
-        .WithSummary("Force a daily reset: Finished→LastDay, LastDay→NotStarted for daily trackings");
+        .WithSummary("Force a daily reset: Finished→LastDay, LastDay/InProgress/Pending→NotStarted for daily trackings");
 
         group.MapPost("/weekly", async (HttpContext ctx, AppDbContext db) =>
         {
@@ -33,18 +33,21 @@ public static class ResetEndpoints
         .WithSummary("Force a weekly reset: also runs daily reset");
     }
 
-    /// <summary>Daily reset: Finished→LastDay, LastDay→NotStarted for daily trackings.</summary>
+    /// <summary>Daily reset: Finished→LastDay, LastDay/InProgress/Pending→NotStarted for daily trackings.</summary>
     private static async Task<int> ApplyDailyReset(AppDbContext db)
     {
         var trackings = await db.Trackings
             .Where(t => t.Frequency == Frequency.Daily &&
-                        (t.Status == TrackingStatus.Finished || t.Status == TrackingStatus.LastDay))
+                        (t.Status == TrackingStatus.Finished ||
+                         t.Status == TrackingStatus.LastDay ||
+                         t.Status == TrackingStatus.InProgress ||
+                         t.Status == TrackingStatus.Pending))
             .ToListAsync();
 
         foreach (var t in trackings)
             t.Status = t.Status == TrackingStatus.Finished
                 ? TrackingStatus.LastDay
-                : TrackingStatus.NotStarted;
+                : TrackingStatus.NotStarted; // LastDay, InProgress, Pending → NotStarted
 
         if (trackings.Count > 0)
             await db.SaveChangesAsync();
@@ -52,18 +55,21 @@ public static class ResetEndpoints
         return trackings.Count;
     }
 
-    /// <summary>Weekly reset: Finished→LastWeek, LastWeek→NotStarted for weekly trackings.</summary>
+    /// <summary>Weekly reset: Finished→LastWeek, LastWeek/InProgress/Pending→NotStarted for weekly trackings.</summary>
     private static async Task<int> ApplyWeeklyReset(AppDbContext db)
     {
         var trackings = await db.Trackings
             .Where(t => t.Frequency == Frequency.Weekly &&
-                        (t.Status == TrackingStatus.Finished || t.Status == TrackingStatus.LastWeek))
+                        (t.Status == TrackingStatus.Finished ||
+                         t.Status == TrackingStatus.LastWeek ||
+                         t.Status == TrackingStatus.InProgress ||
+                         t.Status == TrackingStatus.Pending))
             .ToListAsync();
 
         foreach (var t in trackings)
             t.Status = t.Status == TrackingStatus.Finished
                 ? TrackingStatus.LastWeek
-                : TrackingStatus.NotStarted;
+                : TrackingStatus.NotStarted; // LastWeek, InProgress, Pending → NotStarted
 
         if (trackings.Count > 0)
             await db.SaveChangesAsync();
