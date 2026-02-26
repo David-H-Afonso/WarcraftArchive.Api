@@ -42,6 +42,15 @@ public static class AdminEndpoints
             return Results.Ok(updated);
         }).WithName("UpdateUser").WithSummary("Admin: update an existing user");
 
+        group.MapDelete("/users/{id:guid}", async (Guid id, IAuthService authService, HttpContext ctx) =>
+        {
+            if (!ctx.IsAdmin()) return Results.Forbid();
+            if (ctx.GetUserId() == id) return Results.BadRequest(new { message = "You cannot delete your own account." });
+            var deleted = await authService.DeleteUserAsync(id);
+            if (!deleted) return Results.NotFound();
+            return Results.NoContent();
+        }).WithName("DeleteUser").WithSummary("Admin: delete a user and all their data");
+
         // ── Orphans ───────────────────────────────────────────────────────────
 
         group.MapGet("/orphans", async (AppDbContext db, HttpContext ctx) =>

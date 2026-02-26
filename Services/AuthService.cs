@@ -181,6 +181,33 @@ public class AuthService : IAuthService
             user.CreatedAt, user.UpdatedAt);
     }
 
+    // ── Delete User ───────────────────────────────────────────────────────────
+
+    public async Task<bool> DeleteUserAsync(Guid id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return false;
+
+        // Remove all trackings that reference this user's characters or content
+        var trackings = await _context.Trackings
+            .Where(t => t.Character.OwnerUserId == id || t.Content.OwnerUserId == id)
+            .ToListAsync();
+        _context.Trackings.RemoveRange(trackings);
+
+        var characters = await _context.Characters.Where(c => c.OwnerUserId == id).ToListAsync();
+        _context.Characters.RemoveRange(characters);
+
+        var contents = await _context.Contents.Where(c => c.OwnerUserId == id).ToListAsync();
+        _context.Contents.RemoveRange(contents);
+
+        var tokens = await _context.RefreshTokens.Where(t => t.UserId == id).ToListAsync();
+        _context.RefreshTokens.RemoveRange(tokens);
+
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     // ── Get All Users ─────────────────────────────────────────────────────────
 
     public async Task<List<UserDto>> GetAllUsersAsync() =>
