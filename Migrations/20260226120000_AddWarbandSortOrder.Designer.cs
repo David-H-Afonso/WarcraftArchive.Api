@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using WarcraftArchive.Api.Data;
+using WarcraftArchive.Api.Infrastructure.Persistence;
 
 #nullable disable
 
@@ -35,7 +35,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("ContentUserMotives");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.RefreshToken", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -76,7 +76,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.User", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -116,7 +116,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.UserMotive", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.UserMotive", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -148,7 +148,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("UserMotives");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.Warband", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.Warband", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -183,7 +183,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("Warbands");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Character", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Character", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -233,7 +233,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("Characters");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Content", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Content", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -276,7 +276,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.ToTable("Contents");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Tracking", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Tracking", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -326,22 +326,22 @@ namespace WarcraftArchive.Api.Migrations
 
             modelBuilder.Entity("ContentUserMotives", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Warcraft.Content", null)
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Warcraft.Content", null)
                         .WithMany()
                         .HasForeignKey("ContentsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.UserMotive", null)
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.UserMotive", null)
                         .WithMany()
                         .HasForeignKey("MotivesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.RefreshToken", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.RefreshToken", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "User")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -350,9 +350,9 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.UserMotive", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.UserMotive", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "OwnerUser")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.User", "OwnerUser")
                         .WithMany("UserMotives")
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -361,9 +361,9 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("OwnerUser");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.Warband", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.Warband", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "OwnerUser")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.User", "OwnerUser")
                         .WithMany("Warbands")
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -372,14 +372,14 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("OwnerUser");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Character", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Character", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "OwnerUser")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.User", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.Warband", "Warband")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.Warband", "Warband")
                         .WithMany("Characters")
                         .HasForeignKey("WarbandId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -389,9 +389,9 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("Warband");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Content", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Content", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Auth.User", "OwnerUser")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Auth.User", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -399,15 +399,15 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("OwnerUser");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Tracking", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Tracking", b =>
                 {
-                    b.HasOne("WarcraftArchive.Api.Models.Warcraft.Character", "Character")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Warcraft.Character", "Character")
                         .WithMany("Trackings")
                         .HasForeignKey("CharacterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WarcraftArchive.Api.Models.Warcraft.Content", "Content")
+                    b.HasOne("WarcraftArchive.Api.Domain.Entities.Warcraft.Content", "Content")
                         .WithMany("Trackings")
                         .HasForeignKey("ContentId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -418,7 +418,7 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("Content");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.User", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.User", b =>
                 {
                     b.Navigation("RefreshTokens");
 
@@ -427,17 +427,17 @@ namespace WarcraftArchive.Api.Migrations
                     b.Navigation("Warbands");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Auth.Warband", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Auth.Warband", b =>
                 {
                     b.Navigation("Characters");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Character", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Character", b =>
                 {
                     b.Navigation("Trackings");
                 });
 
-            modelBuilder.Entity("WarcraftArchive.Api.Models.Warcraft.Content", b =>
+            modelBuilder.Entity("WarcraftArchive.Api.Domain.Entities.Warcraft.Content", b =>
                 {
                     b.Navigation("Trackings");
                 });

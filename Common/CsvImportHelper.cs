@@ -1,0 +1,418 @@
+using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
+using WarcraftArchive.Api.Infrastructure.Persistence;
+using WarcraftArchive.Api.Domain.Entities.Auth;
+using WarcraftArchive.Api.Domain.Entities.Warcraft;
+using WarcraftArchive.Api.Domain.Enums;
+
+namespace WarcraftArchive.Api.Common;
+
+/// <summary>
+/// Imports demo data from Notion-exported CSV files.
+/// Files are looked up by glob patterns inside a configurable directory.
+/// The import is idempotent: rows already in the DB are skipped.
+/// </summary>
+public static class CsvImportHelper
+{
+    // ── Public entry point ────────────────────────────────────────────────────
+
+    public static async Task ImportAsync(AppDbContext db, string csvDataPath, User adminUser, ILogger logger)
+    {
+        if (!Directory.Exists(csvDataPath))
+        {
+            logger.LogWarning("CsvImport: data path '{Path}' does not exist — skipping.", csvDataPath);
+            return;
+        }
+
+        logger.LogInformation("CsvImport: scanning '{Path}' for CSV files…", csvDataPath);
+
+        var charFile = FindFile(csvDataPath, "Personajes");
+        var contentFile = FindFile(csvDataPath, "Raids") ?? FindFile(csvDataPath, "dungeons") ?? FindFile(csvDataPath, "instances");
+        var progressFile = FindFile(csvDataPath, "Content Progress") ?? FindFile(csvDataPath, "Progress");
+
+        if (charFile != null)
+            await ImportCharactersAsync(db, charFile, adminUser, logger);
+
+        if (contentFile != null)
+            await ImportContentsAsync(db, contentFile, logger);
+
+        if (progressFile != null)
+            await ImportTrackingsAsync(db, progressFile, adminUser, logger);
+
+        logger.LogInformation("CsvImport: done.");
+    }
+
+    // ── Characters ────────────────────────────────────────────────────────────
+
+    private static async Task ImportCharactersAsync(AppDbContext db, string filePath, User adminUser, ILogger logger)
+    {
+        logger.LogInformation("CsvImport: importing characters from '{File}'", filePath);
+        var rows = ParseCsv(filePath);
+        var imported = 0;
+
+        foreach (var row in rows)
+        {
+            var name = ExtractName(GetColumn(row, "Name", "Nombre", "Character", "Personaje"));
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var alreadyExists = await db.Characters.AnyAsync(c => c.OwnerUserId == adminUser.Id && c.Name == name);
+            if (alreadyExists) continue;
+
+            var levelStr = GetColumn(row, "Level", "Nivel");
+            int? level = int.TryParse(levelStr, out var lv) ? lv : null;
+
+            var warbandName = NullIfEmpty(GetColumn(row, "Warband", "Banda de guerra", "Grupo"));
+            Guid? warbandId = null;
+            if (warbandName != null)
+            {
+                var warband = await db.Warbands.FirstOrDefaultAsync(w => w.OwnerUserId == adminUser.Id && w.Name == warbandName);
+                if (warband == null)
+                {
+                    warband = new Warband { Name = warbandName, OwnerUserId = adminUser.Id };
+                    db.Warbands.Add(warband);
+                    await db.SaveChangesAsync();
+                }
+                warbandId = warband.Id;
+            }
+
+            var character = new Character
+            {
+                Name = name,
+                Level = level,
+                Class = GetColumn(row, "Class", "Clase") is { Length: > 0 } cls ? cls : "Unknown",
+                Race = NullIfEmpty(GetColumn(row, "Race", "Raza")),
+                Covenant = NullIfEmpty(GetColumn(row, "Covenant", "Pacto")),
+                WarbandId = warbandId,
+                OwnerUserId = adminUser.Id,
+            };
+            db.Characters.Add(character);
+            imported++;
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("CsvImport: {Count} characters imported.", imported);
+    }
+
+    // ── Contents ──────────────────────────────────────────────────────────────
+
+    private static async Task ImportContentsAsync(AppDbContext db, string filePath, ILogger logger)
+    {
+        logger.LogInformation("CsvImport: importing contents from '{File}'", filePath);
+        var rows = ParseCsv(filePath);
+        var imported = 0;
+
+        // Resolve admin user for motives
+        var adminUser = await db.Users.FirstOrDefaultAsync(u => u.IsAdmin);
+
+        foreach (var row in rows)
+        {
+            var name = ExtractName(GetColumn(row, "Name", "Nombre", "Instance", "Raid", "Dungeon"));
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var expansion = GetColumn(row, "Expansion", "Expansión", "Expansion Name");
+            if (string.IsNullOrWhiteSpace(expansion)) expansion = "Unknown";
+
+            var alreadyExists = await db.Contents.AnyAsync(c => c.OwnerUserId == adminUser!.Id && c.Name == name && c.Expansion == expansion);
+            if (alreadyExists) continue;
+
+            var diffStr = GetColumn(row, "Difficulties", "Dificultades", "Difficulty", "Dificultad", "AllowedDifficulties");
+            var motiveStr = GetColumn(row, "Motives", "Motivos", "Motive", "Motivo", "Goals", "Objetivo");
+            var comment = NullIfEmpty(GetColumn(row, "Comment", "Comentario", "Notes", "Notas"));
+
+            // Resolve UserMotives
+            var motiveEntities = new List<UserMotive>();
+            if (adminUser != null && !string.IsNullOrWhiteSpace(motiveStr))
+            {
+                foreach (var part in motiveStr.Split(',', ';'))
+                {
+                    var motiveName = ExtractName(part.Trim());
+                    if (string.IsNullOrWhiteSpace(motiveName)) continue;
+                    var motive = await db.UserMotives.FirstOrDefaultAsync(m => m.OwnerUserId == adminUser.Id && m.Name == motiveName);
+                    if (motive == null)
+                    {
+                        motive = new UserMotive { Name = motiveName, OwnerUserId = adminUser.Id };
+                        db.UserMotives.Add(motive);
+                        await db.SaveChangesAsync();
+                    }
+                    motiveEntities.Add(motive);
+                }
+            }
+
+            var content = new Content
+            {
+                Name = name,
+                Expansion = expansion,
+                Comment = comment,
+                AllowedDifficulties = (int)ParseDifficultyFlags(diffStr),
+                Motives = motiveEntities,
+                OwnerUserId = adminUser?.Id,
+            };
+            db.Contents.Add(content);
+            imported++;
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("CsvImport: {Count} contents imported.", imported);
+    }
+
+    // ── Trackings ─────────────────────────────────────────────────────────────
+
+    private static async Task ImportTrackingsAsync(AppDbContext db, string filePath, User adminUser, ILogger logger)
+    {
+        logger.LogInformation("CsvImport: importing trackings from '{File}'", filePath);
+        var rows = ParseCsv(filePath);
+        var imported = 0;
+        var skipped = 0;
+
+        foreach (var row in rows)
+        {
+            var charName = ExtractName(GetColumn(row, "Character", "Personaje", "Char", "Name"));
+            var contentName = ExtractName(GetColumn(row, "Content", "Contenido", "Instance", "Raid"));
+
+            if (string.IsNullOrWhiteSpace(charName) || string.IsNullOrWhiteSpace(contentName))
+            {
+                skipped++;
+                continue;
+            }
+
+            var character = await db.Characters.FirstOrDefaultAsync(c => c.OwnerUserId == adminUser.Id && c.Name == charName);
+            if (character == null)
+            {
+                logger.LogDebug("CsvImport: character '{Name}' not found — skipping row.", charName);
+                skipped++;
+                continue;
+            }
+
+            var content = await db.Contents.FirstOrDefaultAsync(c => c.OwnerUserId == adminUser.Id && c.Name == contentName);
+            if (content == null)
+            {
+                logger.LogDebug("CsvImport: content '{Name}' not found — skipping row.", contentName);
+                skipped++;
+                continue;
+            }
+
+            var diffStr = GetColumn(row, "Difficulty", "Dificultad");
+            var freqStr = GetColumn(row, "Frequency", "Frecuencia");
+            var statusStr = GetColumn(row, "Status", "Estado");
+            var comment = NullIfEmpty(GetColumn(row, "Comment", "Comentario", "Notes", "Notas"));
+
+            var difficulty = ParseDifficulty(diffStr);
+            var frequency = ParseFrequency(freqStr);
+            var status = ParseTrackingStatus(statusStr);
+
+            // Idempotency check
+            var exists = await db.Trackings.AnyAsync(t =>
+                t.CharacterId == character.Id &&
+                t.ContentId == content.Id &&
+                t.Difficulty == difficulty);
+            if (exists)
+            {
+                skipped++;
+                continue;
+            }
+
+            db.Trackings.Add(new Tracking
+            {
+                CharacterId = character.Id,
+                ContentId = content.Id,
+                Difficulty = difficulty,
+                Frequency = frequency,
+                Status = status,
+                Comment = comment,
+            });
+            imported++;
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("CsvImport: {Count} trackings imported, {Skipped} skipped.", imported, skipped);
+    }
+
+    // ── CSV parser ────────────────────────────────────────────────────────────
+
+    /// <summary>Minimal RFC-4180-compatible CSV parser. Returns rows as dictionaries keyed by header name.</summary>
+    internal static List<Dictionary<string, string>> ParseCsv(string filePath)
+    {
+        var text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+        return ParseCsvText(text);
+    }
+
+    public static List<Dictionary<string, string>> ParseCsvText(string text)
+    {
+        var lines = SplitCsvLines(text);
+        var result = new List<Dictionary<string, string>>();
+        if (lines.Count == 0) return result;
+
+        var headers = SplitCsvRow(lines[0]);
+        for (var i = 1; i < lines.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[i])) continue;
+            var values = SplitCsvRow(lines[i]);
+            var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var j = 0; j < headers.Count; j++)
+                row[headers[j].Trim()] = j < values.Count ? values[j].Trim() : string.Empty;
+            result.Add(row);
+        }
+        return result;
+    }
+    private static List<string> SplitCsvLines(string text)
+    {
+        var lines = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        var inQuote = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            if (ch == '"') { inQuote = !inQuote; sb.Append(ch); }
+            else if ((ch == '\n' || ch == '\r') && !inQuote)
+            {
+                if (ch == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
+                lines.Add(sb.ToString());
+                sb.Clear();
+            }
+            else sb.Append(ch);
+        }
+        if (sb.Length > 0) lines.Add(sb.ToString());
+        return lines;
+    }
+
+    private static List<string> SplitCsvRow(string line)
+    {
+        var fields = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        var inQuote = false;
+        var i = 0;
+        while (i < line.Length)
+        {
+            var ch = line[i];
+            if (ch == '"')
+            {
+                if (inQuote && i + 1 < line.Length && line[i + 1] == '"')
+                { sb.Append('"'); i += 2; continue; }
+                inQuote = !inQuote;
+                i++;
+            }
+            else if (ch == ',' && !inQuote)
+            { fields.Add(sb.ToString()); sb.Clear(); i++; }
+            else { sb.Append(ch); i++; }
+        }
+        fields.Add(sb.ToString());
+        return fields;
+    }
+
+    // ── Column accessor ───────────────────────────────────────────────────────
+
+    private static string GetColumn(Dictionary<string, string> row, params string[] candidates)
+    {
+        foreach (var key in candidates)
+            if (row.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
+                return val.Trim();
+        return string.Empty;
+    }
+
+    // ── Name extraction: "Name (https://...)" → "Name" ───────────────────────
+
+    internal static string ExtractName(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return raw;
+        var idx = raw.IndexOf(" (", StringComparison.Ordinal);
+        return idx >= 0 ? raw[..idx].Trim() : raw.Trim();
+    }
+
+    private static string? NullIfEmpty(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // ── Difficulty flags: "Heróico, Mítico" → DifficultyFlags ────────────────
+
+    public static DifficultyFlags ParseDifficultyFlags(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return DifficultyFlags.None;
+        var result = DifficultyFlags.None;
+        foreach (var part in raw.Split(',', '/', ';', '|'))
+        {
+            var s = part.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            s = new string(s.Where(c =>
+                System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) !=
+                System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+
+            result |= s switch
+            {
+                "lfr" or "buscador de raid" or "buscador" => DifficultyFlags.LFR,
+                "normal" => DifficultyFlags.Normal,
+                "heroic" or "heroico" or "heroico" or "heroïc" => DifficultyFlags.Heroic,
+                "mythic" or "mitico" or "mitico" or "mileg" or "elite" => DifficultyFlags.Mythic,
+                _ => DifficultyFlags.None,
+            };
+        }
+        return result;
+    }
+
+    // ── Single difficulty: "Mythic" → DifficultyFlags ────────────────────────────────
+
+    public static DifficultyFlags ParseDifficulty(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return DifficultyFlags.Normal;
+        var s = Normalize(raw);
+        return s switch
+        {
+            "lfr" or "buscador" => DifficultyFlags.LFR,
+            "normal" => DifficultyFlags.Normal,
+            "heroic" or "heroico" => DifficultyFlags.Heroic,
+            "mythic" or "mitico" => DifficultyFlags.Mythic,
+            _ => DifficultyFlags.Normal,
+        };
+    }
+
+    // ── Frequency ─────────────────────────────────────────────────────────────
+
+    public static Frequency ParseFrequency(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return Frequency.Weekly;
+        return Normalize(raw) switch
+        {
+            "hourly" or "hora" or "por hora" => Frequency.Hourly,
+            "daily" or "diario" or "diaria" => Frequency.Daily,
+            "weekly" or "semanal" => Frequency.Weekly,
+            "monthly" or "mensual" => Frequency.Monthly,
+            _ => Frequency.Weekly,
+        };
+    }
+
+    // ── TrackingStatus ────────────────────────────────────────────────────────
+
+    public static TrackingStatus ParseTrackingStatus(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return TrackingStatus.NotStarted;
+        return Normalize(raw) switch
+        {
+            "notstarted" or "not started" or "no iniciado" or "pendiente de iniciar" => TrackingStatus.NotStarted,
+            "pending" or "pendiente" => TrackingStatus.Pending,
+            "inprogress" or "in progress" or "en progreso" or "encurso" => TrackingStatus.InProgress,
+            "lastday" or "last day" or "ultimo dia" or "dia pasado" => TrackingStatus.LastDay,
+            "lastweek" or "last week" or "ultima semana" or "semana pasada" => TrackingStatus.LastWeek,
+            "finished" or "terminado" or "completado" or "done" or "hecho" => TrackingStatus.Finished,
+            _ => TrackingStatus.NotStarted,
+        };
+    }
+
+    // ── Normalize: lowercase + strip diacritics ───────────────────────────────
+
+    private static string Normalize(string raw)
+    {
+        var lower = raw.Trim().ToLowerInvariant();
+        var decomposed = lower.Normalize(System.Text.NormalizationForm.FormD);
+        var clean = new string(decomposed
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        // also collapse whitespace and remove spaces for switch matching
+        return Regex.Replace(clean, @"\s+", " ").Trim();
+    }
+
+    // ── File finder ───────────────────────────────────────────────────────────
+
+    private static string? FindFile(string dir, string pattern) =>
+        Directory
+            .EnumerateFiles(dir, "*.csv", SearchOption.TopDirectoryOnly)
+            .FirstOrDefault(f => Path.GetFileName(f).Contains(pattern,
+                StringComparison.OrdinalIgnoreCase));
+}

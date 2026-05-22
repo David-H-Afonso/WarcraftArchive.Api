@@ -1,6 +1,6 @@
-using WarcraftArchive.Api.DTOs;
-using WarcraftArchive.Api.Helpers;
-using WarcraftArchive.Api.Services;
+using WarcraftArchive.Api.Contracts;
+using WarcraftArchive.Api.Common;
+using WarcraftArchive.Api.Application.Interfaces;
 
 namespace WarcraftArchive.Api.Endpoints;
 

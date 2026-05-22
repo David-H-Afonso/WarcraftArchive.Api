@@ -141,27 +141,25 @@ See the root `docker-compose.casaos.yml` for CasaOS deployment.
 
 ```
 WarcraftArchive.Api/
+├── Application/
+│   ├── Interfaces/       # Service interfaces
+│   └── Services/         # Business logic implementations
+├── Common/               # Shared helpers and extensions
 ├── Configuration/        # Strongly-typed settings (JWT, CORS, DB, Seed)
-├── Data/                 # EF Core DbContext
-├── DTOs/                 # Request/Response DTOs
+├── Contracts/            # Request/Response DTOs
+├── Domain/
+│   ├── Entities/
+│   │   ├── Auth/         # User, RefreshToken
+│   │   └── Warcraft/     # Character, Warband, Content, Tracking, Motive
+│   └── Enums/            # Domain enumerations
 ├── Endpoints/            # Minimal API endpoint maps
-│   ├── AdminEndpoints.cs
-│   ├── AuthEndpoints.cs
-│   ├── CharacterEndpoints.cs
-│   ├── ContentEndpoints.cs
-│   ├── DashboardEndpoints.cs
-│   ├── DataEndpoints.cs
-│   ├── TrackingEndpoints.cs
-│   ├── UserMotiveEndpoints.cs
-│   └── WarbandEndpoints.cs
-├── Helpers/              # JWT claims helpers, extension methods
-├── Middleware/           # Exception handling middleware
-├── Migrations/           # EF Core migrations
-├── Models/
-│   ├── Auth/             # User, RefreshToken entities + settings
-│   └── Warcraft/         # Character, Warband, Content, Tracking, Motive entities
-├── Services/             # Business logic (ICharacterService, ITrackingService, ...)
-└── Program.cs            # App bootstrap, DI, middleware pipeline
+├── Infrastructure/
+│   └── Persistence/
+│       ├── Configurations/  # IEntityTypeConfiguration classes
+│       └── AppDbContext.cs
+├── Middleware/            # Exception handling middleware
+├── Migrations/            # EF Core migrations
+└── Program.cs             # App bootstrap, DI, middleware pipeline
 ```
 
 ## Environment Variables
